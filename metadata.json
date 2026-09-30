@@ -1,0 +1,7 @@
+{
+  "name": "SSC CGL Preparation Portal",
+  "description": "Comprehensive all-in-one preparation portal for SSC CGL aspirants featuring mock tests, practice questions, AI tutor, performance analytics, and study materials.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
