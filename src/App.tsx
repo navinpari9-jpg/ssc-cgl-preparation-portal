@@ -22,6 +22,9 @@ import { CurrentAffairsPage } from './pages/CurrentAffairsPage';
 import { PYQPage } from './pages/PYQPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { SettingsPage } from './pages/SettingsPage';
+import { QuizQuestionPage } from './pages/QuizQuestionPage';
+import { QuizResultPage } from './pages/QuizResultPage';
 import { AdminPage } from './pages/AdminPage';
 
 const AppContent: React.FC = () => {
@@ -128,6 +131,24 @@ const AppContent: React.FC = () => {
             <ProfilePage />
           </ProtectedRoute>
         );
+      case 'settings':
+        return (
+          <ProtectedRoute requiredRole="student" pagePath="/settings">
+            <SettingsPage />
+          </ProtectedRoute>
+        );
+      case 'quiz':
+        return (
+          <ProtectedRoute requiredRole="student" pagePath="/quiz">
+            <QuizQuestionPage />
+          </ProtectedRoute>
+        );
+      case 'quiz-result':
+        return (
+          <ProtectedRoute requiredRole="student" pagePath="/quiz-result">
+            <QuizResultPage />
+          </ProtectedRoute>
+        );
 
       // Protected Admin Route
       case 'admin':
@@ -147,32 +168,37 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
-      
-      {/* Top Fixed Navbar */}
-      <Navbar
-        onOpenMobileMenu={() => setMobileMenuOpen(true)}
-        onOpenAuthModal={() => setActivePage('login')}
-      />
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex font-sans antialiased">
+      {/* Docked Premium Left Sidebar */}
+      {showSidebar && (
+        <Sidebar
+          mobileOpen={mobileMenuOpen}
+          onCloseMobile={() => setMobileMenuOpen(false)}
+        />
+      )}
 
-      {/* Main Workspace Body with Optional Sidebar */}
-      <div className={`flex-1 flex w-full mx-auto ${isLandingPage ? 'max-w-7xl' : isAuthPage ? 'max-w-6xl' : 'max-w-7xl'}`}>
-        {showSidebar && (
-          <Sidebar
-            mobileOpen={mobileMenuOpen}
-            onCloseMobile={() => setMobileMenuOpen(false)}
-          />
-        )}
+      {/* Main Workspace Body with Header and Content */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        {/* Top Navbar */}
+        <Navbar
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
+          onOpenAuthModal={() => setActivePage('login')}
+        />
 
         {/* Scrollable Page Content Area */}
-        <main className={`flex-1 min-w-0 ${isAuthPage ? 'px-2 sm:px-4 py-4' : 'px-4 sm:px-6 lg:px-8 pb-20 md:pb-12 pt-4'} overflow-y-auto`}>
+        <main className={`flex-1 min-w-0 ${
+          isLandingPage 
+            ? 'w-full' 
+            : isAuthPage 
+            ? 'px-4 py-8 max-w-4xl mx-auto w-full' 
+            : 'px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto w-full'
+        }`}>
           {renderActivePage()}
         </main>
       </div>
 
       {/* Toast Notifications */}
       <ToastContainer />
-
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { SubjectMetadata, Question, MockTest, StudyMaterial, CurrentAffairItem, LeaderboardEntry, Achievement, NotificationItem } from '../src/types';
+import { COMPLETE_STUDY_LIBRARY } from './studyLibraryData';
 
 export const SUBJECTS_CATALOG: SubjectMetadata[] = [
   {
@@ -724,7 +725,8 @@ Both conditions must be met:
       'Possibility rule: If a relationship is unknown, any possibility is TRUE.'
     ],
     updatedAt: '2026-09-14'
-  }
+  },
+  ...COMPLETE_STUDY_LIBRARY
 ];
 
 export const INITIAL_CURRENT_AFFAIRS: CurrentAffairItem[] = [

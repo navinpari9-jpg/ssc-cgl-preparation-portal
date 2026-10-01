@@ -18,9 +18,11 @@ export const pageToPath = (page: string): string => {
     case 'register': return '/register';
     case 'forgot-password': return '/forgot-password';
     case 'dashboard': return '/dashboard';
-    case 'subjects': return '/syllabus';
+    case 'subjects': return '/subjects';
     case 'practice': return '/practice';
     case 'mock-tests': return '/mock-tests';
+    case 'quiz': return '/quiz';
+    case 'quiz-result': return '/quiz-result';
     case 'analytics': return '/performance';
     case 'ai-tutor': return '/ai-tutor';
     case 'ai-generator': return '/ai-question-generator';
@@ -30,6 +32,7 @@ export const pageToPath = (page: string): string => {
     case 'pyq': return '/pyq';
     case 'leaderboard': return '/leaderboard';
     case 'profile': return '/profile';
+    case 'settings': return '/settings';
     case 'admin': return '/admin';
     default: return '/dashboard';
   }
@@ -47,6 +50,10 @@ export const pathToPage = (pathname: string): string => {
     case '/subjects': return 'subjects';
     case '/practice': return 'practice';
     case '/mock-tests': return 'mock-tests';
+    case '/quiz':
+    case '/quiz-question': return 'quiz';
+    case '/quiz-result':
+    case '/result': return 'quiz-result';
     case '/performance':
     case '/analytics': return 'analytics';
     case '/ai-tutor': return 'ai-tutor';
@@ -59,6 +66,7 @@ export const pathToPage = (pathname: string): string => {
     case '/pyq': return 'pyq';
     case '/leaderboard': return 'leaderboard';
     case '/profile': return 'profile';
+    case '/settings': return 'settings';
     case '/admin': return 'admin';
     default: return 'dashboard';
   }
@@ -86,6 +94,8 @@ interface AppContextType {
   setActiveSubjectFilter: (subId?: string) => void;
   activeTopicFilter?: string;
   setActiveTopicFilter: (topic?: string) => void;
+  isSidebarCollapsed: boolean;
+  toggleSidebarCollapse: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -132,6 +142,21 @@ const AppContextProviderInner: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [activeSubjectFilter, setActiveSubjectFilter] = useState<string | undefined>(undefined);
   const [activeTopicFilter, setActiveTopicFilter] = useState<string | undefined>(undefined);
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ssc_sidebar_collapsed') === 'true';
+    }
+    return false;
+  });
+
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('ssc_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   // Sync user with AuthContext
   useEffect(() => {
@@ -275,7 +300,9 @@ const AppContextProviderInner: React.FC<{ children: React.ReactNode }> = ({ chil
         activeSubjectFilter,
         setActiveSubjectFilter,
         activeTopicFilter,
-        setActiveTopicFilter
+        setActiveTopicFilter,
+        isSidebarCollapsed,
+        toggleSidebarCollapse
       }}
     >
       {children}

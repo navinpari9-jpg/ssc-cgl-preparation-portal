@@ -90,11 +90,23 @@ export const api = {
     return res.json();
   },
 
-  async getStudyMaterials(params?: { subjectId?: string; category?: string; search?: string }): Promise<StudyMaterial[]> {
+  async getStudyMaterials(params?: { 
+    subjectId?: string; 
+    category?: string; 
+    resourceType?: string;
+    difficulty?: string;
+    year?: string;
+    search?: string;
+    sortBy?: string;
+  }): Promise<StudyMaterial[]> {
     const query = new URLSearchParams();
     if (params?.subjectId) query.set('subjectId', params.subjectId);
     if (params?.category) query.set('category', params.category);
+    if (params?.resourceType) query.set('resourceType', params.resourceType);
+    if (params?.difficulty) query.set('difficulty', params.difficulty);
+    if (params?.year) query.set('year', params.year);
     if (params?.search) query.set('search', params.search);
+    if (params?.sortBy) query.set('sortBy', params.sortBy);
 
     const res = await fetch(`/api/study-materials?${query.toString()}`);
     if (!res.ok) throw new Error('Failed to load study materials');
@@ -109,6 +121,21 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to create study material');
     return res.json();
+  },
+
+  async updateStudyMaterial(id: string, updates: Partial<StudyMaterial>): Promise<StudyMaterial> {
+    const res = await fetch(`/api/study-materials/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) throw new Error('Failed to update study material');
+    return res.json();
+  },
+
+  async deleteStudyMaterial(id: string): Promise<void> {
+    const res = await fetch(`/api/study-materials/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete study material');
   },
 
   async getCurrentAffairs(category?: string, search?: string): Promise<CurrentAffairItem[]> {
@@ -191,34 +218,69 @@ export const api = {
     return res.json();
   },
 
+  // System & AI Diagnostic Endpoints
+  async getHealth(): Promise<{ success: boolean; server: string; aiConfigured: boolean }> {
+    const res = await fetch('/api/health');
+    if (!res.ok) throw new Error('Health check failed');
+    return res.json();
+  },
+
+  async testAIConnection(): Promise<{ success: boolean; message: string; error?: string }> {
+    const res = await fetch('/api/ai/test');
+    return res.json();
+  },
+
   // AI Service Calls
   async askAITutor(query: string, context?: { subject?: string; topic?: string; mode?: string }) {
-    const res = await fetch('/api/gemini/tutor', {
+    const res = await fetch('/api/ai/tutor', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, ...context })
+      body: JSON.stringify({ question: query, ...context })
     });
-    if (!res.ok) throw new Error('AI Tutor service unavailable');
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'AI Tutor service unavailable');
+    }
     return res.json();
   },
 
   async generateAIQuestions(params: { subject: string; topic: string; difficulty: string; count: number }) {
-    const res = await fetch('/api/gemini/generate-questions', {
+    const res = await fetch('/api/ai/generate-questions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params)
     });
-    if (!res.ok) throw new Error('AI Question Generator unavailable');
-    return res.json();
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'AI Question Generator unavailable');
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : (data.questions || []);
   },
 
   async analyzePerformance(stats: any) {
-    const res = await fetch('/api/gemini/analyze-performance', {
+    const res = await fetch('/api/ai/analyze-performance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(stats)
     });
-    if (!res.ok) throw new Error('AI Performance Analysis unavailable');
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'AI Performance Analysis unavailable');
+    }
+    return res.json();
+  },
+
+  async generateAIStudyPlan(inputs: any) {
+    const res = await fetch('/api/ai/study-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(inputs)
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'AI Study Plan generation unavailable');
+    }
     return res.json();
   },
 

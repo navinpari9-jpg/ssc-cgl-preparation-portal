@@ -101,17 +101,76 @@ export interface TestAttemptResult {
   answers: TestAnswerRecord[];
 }
 
+export type StudyMaterialCategory = 
+  | 'Notes' 
+  | 'Formulas' 
+  | 'Short Tricks' 
+  | 'Vocabulary' 
+  | 'PYQ Analysis' 
+  | 'Static GK'
+  | 'Formula Book'
+  | 'Quick Revision'
+  | 'PYQ Collection'
+  | 'Practice PDF'
+  | 'Mock Test PDF'
+  | 'Revision Capsule';
+
+export interface SolvedExample {
+  id: string;
+  question: string;
+  solution: string;
+  stepByStep?: string[];
+  shortcutMethod?: string;
+  pyqMeta?: string;
+}
+
+export interface PracticeQuestionItem {
+  id: string;
+  question: string;
+  options: [string, string, string, string];
+  correctAnswer: number;
+  explanation: string;
+  difficulty?: 'Easy' | 'Medium' | 'Hard';
+}
+
+export interface PdfPageItem {
+  pageNumber: number;
+  title: string;
+  section?: string;
+  content: string;
+}
+
 export interface StudyMaterial {
   id: string;
   title: string;
   subjectId: SubjectId;
   topic: string;
-  category: 'Notes' | 'Formulas' | 'Short Tricks' | 'Vocabulary' | 'PYQ Analysis' | 'Static GK';
+  category: StudyMaterialCategory;
+  resourceType?: 'note' | 'pdf' | 'formula-sheet' | 'pyq' | 'practice-set' | 'mock-pdf' | 'capsule';
   readTimeMinutes: number;
   summary: string;
   content: string;
+  tableOfContents?: { id: string; title: string }[];
   keyPoints?: string[];
+  formulas?: string[];
+  shortcuts?: string[];
+  commonMistakes?: string[];
+  solvedExamples?: SolvedExample[];
+  practiceQuestions?: PracticeQuestionItem[];
+  quickRevision?: string[];
+  examRelevance?: string;
+  difficulty?: 'Easy' | 'Medium' | 'Hard';
+  pagesCount?: number;
+  questionsCount?: number;
+  fileSizeBytes?: number;
+  fileSizeFormatted?: string;
+  yearRelevance?: string;
+  viewsCount?: number;
+  downloadsCount?: number;
+  isFeatured?: boolean;
+  isPublished?: boolean;
   downloadablePdf?: string;
+  pdfPages?: PdfPageItem[];
   bookmarked?: boolean;
   completed?: boolean;
   updatedAt: string;

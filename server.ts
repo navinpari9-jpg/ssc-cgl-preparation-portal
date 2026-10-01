@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { store } from './server/store';
-import { askAITutor, generateAIQuestions, analyzeStudentPerformance } from './server/ai';
+import { askAITutor, generateAIQuestions, analyzeStudentPerformance, testAIConnection, generateAIStudyPlan } from './server/ai';
 
 dotenv.config();
 
@@ -15,9 +15,23 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// API Endpoints
+// Health & System Status
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', time: new Date().toISOString(), platform: 'SSC CGL Preparation Portal' });
+  res.json({
+    success: true,
+    server: 'running',
+    aiConfigured: !!(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim())
+  });
+});
+
+// AI Connection Diagnostic Test
+app.get('/api/ai/test', async (req: Request, res: Response) => {
+  const result = await testAIConnection();
+  if (!result.success) {
+    res.status(503).json(result);
+    return;
+  }
+  res.json(result);
 });
 
 // Subjects Catalog & Syllabus
@@ -109,11 +123,15 @@ app.get('/api/test-attempts', (req: Request, res: Response) => {
 
 // Study Materials Library
 app.get('/api/study-materials', (req: Request, res: Response) => {
-  const { subjectId, category, search } = req.query;
+  const { subjectId, category, resourceType, difficulty, year, search, sortBy } = req.query;
   const materials = store.getStudyMaterials({
     subjectId: subjectId as string,
     category: category as string,
-    search: search as string
+    resourceType: resourceType as string,
+    difficulty: difficulty as string,
+    year: year as string,
+    search: search as string,
+    sortBy: sortBy as string
   });
   res.json(materials);
 });
@@ -121,6 +139,24 @@ app.get('/api/study-materials', (req: Request, res: Response) => {
 app.post('/api/study-materials', (req: Request, res: Response) => {
   const newMat = store.addStudyMaterial(req.body);
   res.status(201).json(newMat);
+});
+
+app.put('/api/study-materials/:id', (req: Request, res: Response) => {
+  const updated = store.updateStudyMaterial(req.params.id, req.body);
+  if (!updated) {
+    res.status(404).json({ error: 'Study material not found' });
+    return;
+  }
+  res.json(updated);
+});
+
+app.delete('/api/study-materials/:id', (req: Request, res: Response) => {
+  const success = store.deleteStudyMaterial(req.params.id);
+  if (!success) {
+    res.status(404).json({ error: 'Study material not found' });
+    return;
+  }
+  res.json({ success: true, message: 'Study material deleted successfully' });
 });
 
 // Current Affairs
@@ -182,32 +218,69 @@ app.post('/api/notifications/:id/read', (req: Request, res: Response) => {
   res.json(notifs);
 });
 
-// AI Features powered by Gemini
-app.post('/api/gemini/tutor', async (req: Request, res: Response) => {
-  const { query, subject, topic, mode } = req.body;
-  if (!query) {
-    res.status(400).json({ error: 'Query is required' });
+// AI Features powered by Gemini 3.1 Flash / 3.8 Flash
+const handleTutor = async (req: Request, res: Response) => {
+  const question = req.body.question || req.body.query;
+  const { subject, topic, mode } = req.body;
+  if (!question || typeof question !== 'string' || !question.trim()) {
+    res.status(400).json({ success: false, error: 'Question is required' });
     return;
   }
-  const result = await askAITutor(query, { subject, topic, mode });
+  const result = await askAITutor({ question: question.trim(), subject, topic, mode });
+  if (!result.success) {
+    const status = result.error?.includes('GEMINI_API_KEY') ? 401 : 503;
+    res.status(status).json(result);
+    return;
+  }
   res.json(result);
-});
+};
 
-app.post('/api/gemini/generate-questions', async (req: Request, res: Response) => {
+app.post('/api/ai/tutor', handleTutor);
+app.post('/api/gemini/tutor', handleTutor);
+
+const handleGenerateQuestions = async (req: Request, res: Response) => {
   const { subject, topic, difficulty, count } = req.body;
-  const questions = await generateAIQuestions({
+  const result = await generateAIQuestions({
     subject: subject || 'Quantitative Aptitude',
-    topic: topic || 'Algebra',
+    topic: topic || 'Percentage',
     difficulty: difficulty || 'Medium',
-    count: count || 5
+    count: typeof count === 'number' ? count : parseInt(count, 10) || 5
   });
-  res.json(questions);
-});
+  if (!result.success) {
+    const status = result.error?.includes('GEMINI_API_KEY') ? 401 : 503;
+    res.status(status).json(result);
+    return;
+  }
+  // Return questions array directly or object
+  res.json(result.questions);
+};
 
-app.post('/api/gemini/analyze-performance', async (req: Request, res: Response) => {
-  const stats = req.body;
-  const analysis = await analyzeStudentPerformance(stats);
-  res.json(analysis);
+app.post('/api/ai/generate-questions', handleGenerateQuestions);
+app.post('/api/gemini/generate-questions', handleGenerateQuestions);
+
+const handleAnalyzePerformance = async (req: Request, res: Response) => {
+  const stats = req.body || {};
+  const result = await analyzeStudentPerformance(stats);
+  if (!result.success) {
+    const status = result.error?.includes('GEMINI_API_KEY') ? 401 : 503;
+    res.status(status).json(result);
+    return;
+  }
+  res.json(result);
+};
+
+app.post('/api/ai/analyze-performance', handleAnalyzePerformance);
+app.post('/api/gemini/analyze-performance', handleAnalyzePerformance);
+
+// AI Study Plan Generation
+app.post('/api/ai/study-plan', async (req: Request, res: Response) => {
+  const result = await generateAIStudyPlan(req.body || {});
+  if (!result.success) {
+    const status = result.error?.includes('GEMINI_API_KEY') ? 401 : 503;
+    res.status(status).json(result);
+    return;
+  }
+  res.json(result);
 });
 
 // Helper to extract bearer token

@@ -6,7 +6,6 @@ import {
   ShieldCheck, 
   Plus, 
   Trash2, 
-  Edit, 
   Check, 
   FileText, 
   HelpCircle, 
@@ -17,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export const AdminPage: React.FC = () => {
-  const { user, showToast, refreshUser } = useApp();
+  const { user, showToast } = useApp();
   
   const [activeAdminTab, setActiveAdminTab] = useState<'questions' | 'mock-tests' | 'materials' | 'overview'>('questions');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -85,7 +84,7 @@ export const AdminPage: React.FC = () => {
       showToast({
         type: 'success',
         title: 'Question Added',
-        message: 'The new question is now live in the practice drill and mock engine.'
+        message: 'The new question has been added to the master repository.'
       });
 
       // Reset form
@@ -110,40 +109,40 @@ export const AdminPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8 py-2 max-w-6xl mx-auto">
+    <div className="space-y-6 py-2 max-w-6xl mx-auto">
       
       {/* Admin Header */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-800/40 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-6 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-amber-300 text-xs font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-[#2563EB] text-xs font-semibold">
             <ShieldCheck className="w-4 h-4" />
             <span>Admin Management Console</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold mt-1">
-            SSC CGL Academic Operations
+          <h1 className="text-2xl font-bold tracking-tight text-[#0F172A] mt-0.5">
+            Academic Operations & Repository
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
-            Manage question banks, edit test parameters, publish study materials, and monitor platform performance.
+          <p className="text-xs text-[#64748B] mt-0.5">
+            Manage master questions, verify mock test configurations, and monitor student metrics.
           </p>
         </div>
 
         <button
           onClick={() => setShowAddQuestionModal(true)}
-          className="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+          className="px-4 py-2 rounded-md bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>Add New Question</span>
         </button>
       </div>
 
-      {/* Admin Tabs */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold overflow-x-auto">
+      {/* Admin Navigation Tabs */}
+      <div className="flex items-center gap-1 p-1 bg-white border border-[#E2E8F0] rounded-lg text-xs font-semibold overflow-x-auto">
         <button
           onClick={() => setActiveAdminTab('questions')}
-          className={`py-2 px-4 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+          className={`py-2 px-4 rounded-md transition-colors cursor-pointer whitespace-nowrap ${
             activeAdminTab === 'questions'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-              : 'text-slate-500'
+              ? 'bg-[#2563EB] text-white shadow-xs'
+              : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
           Questions Repository ({questions.length})
@@ -151,76 +150,81 @@ export const AdminPage: React.FC = () => {
 
         <button
           onClick={() => setActiveAdminTab('mock-tests')}
-          className={`py-2 px-4 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+          className={`py-2 px-4 rounded-md transition-colors cursor-pointer whitespace-nowrap ${
             activeAdminTab === 'mock-tests'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-              : 'text-slate-500'
+              ? 'bg-[#2563EB] text-white shadow-xs'
+              : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          Mock Test Packages ({mockTests.length})
+          Mock Test Series ({mockTests.length})
         </button>
 
         <button
           onClick={() => setActiveAdminTab('materials')}
-          className={`py-2 px-4 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+          className={`py-2 px-4 rounded-md transition-colors cursor-pointer whitespace-nowrap ${
             activeAdminTab === 'materials'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-              : 'text-slate-500'
+              ? 'bg-[#2563EB] text-white shadow-xs'
+              : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          Study Capsules ({materials.length})
+          Study Materials ({materials.length})
         </button>
 
         <button
           onClick={() => setActiveAdminTab('overview')}
-          className={`py-2 px-4 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+          className={`py-2 px-4 rounded-md transition-colors cursor-pointer whitespace-nowrap ${
             activeAdminTab === 'overview'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-              : 'text-slate-500'
+              ? 'bg-[#2563EB] text-white shadow-xs'
+              : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          Platform Analytics
+          Platform Metrics
         </button>
       </div>
 
       {/* Questions Manager */}
       {activeAdminTab === 'questions' && (
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              All Questions in Master Bank
+        <div className="p-6 rounded-xl bg-white border border-[#E2E8F0] shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+            <h3 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">
+              Questions Master Bank
             </h3>
-            <span className="text-xs text-slate-400">Total: {questions.length} questions</span>
+            <span className="text-xs text-[#64748B] tabular-nums">Total: {questions.length} questions</span>
           </div>
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="divide-y divide-[#E2E8F0]">
             {questions.map((q) => (
               <div key={q.id} className="py-4 space-y-2 text-xs">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-indigo-600 dark:text-indigo-400">{q.subjectId}</span>
-                    <span>·</span>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">{q.topic}</span>
-                    <span>·</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold">
-                      {q.difficulty}
-                    </span>
+                  <div className="flex items-center gap-2 text-[11px] text-[#64748B]">
+                    <span className="font-semibold text-[#2563EB]">{q.subjectId}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="font-medium text-[#0F172A]">{q.topic}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{q.difficulty}</span>
                   </div>
 
                   <button
                     onClick={() => handleDeleteQuestion(q.id)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                    className="p-1.5 rounded-md text-[#64748B] hover:text-[#DC2626] hover:bg-red-50 transition-colors cursor-pointer"
                     title="Delete question"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 
-                <p className="font-bold text-slate-900 dark:text-white leading-relaxed">{q.question}</p>
+                <p className="font-semibold text-[#0F172A] leading-relaxed">{q.question}</p>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
                   {q.options.map((opt, i) => (
-                    <div key={i} className={`p-2 rounded-lg border ${i === q.correctAnswer ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 font-bold text-emerald-800 dark:text-emerald-200' : 'border-slate-200 dark:border-slate-800'}`}>
+                    <div
+                      key={i}
+                      className={`p-2 rounded-md border ${
+                        i === q.correctAnswer
+                          ? 'bg-green-50 border-[#16A34A] font-semibold text-[#16A34A]'
+                          : 'bg-[#F8FAFC] border-[#E2E8F0] text-[#0F172A]'
+                      }`}
+                    >
                       {String.fromCharCode(65 + i)}: {opt}
                     </div>
                   ))}
@@ -235,177 +239,217 @@ export const AdminPage: React.FC = () => {
       {activeAdminTab === 'mock-tests' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {mockTests.map((mock) => (
-            <div key={mock.id} className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-indigo-600 dark:text-indigo-400">{mock.type}</span>
-                <span className="text-slate-400">{mock.attemptCount} attempts</span>
+            <div key={mock.id} className="p-5 rounded-xl bg-white border border-[#E2E8F0] shadow-xs space-y-3">
+              <div className="flex items-center justify-between text-xs text-[#64748B]">
+                <span className="font-semibold text-[#2563EB]">{mock.type}</span>
+                <span className="tabular-nums">{mock.attemptCount} attempts</span>
               </div>
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white">{mock.title}</h3>
-              <p className="text-xs text-slate-500">{mock.description}</p>
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between text-xs font-semibold">
-                <span>{mock.totalQuestions} Questions · {mock.durationMinutes} mins</span>
-                <span className="text-emerald-600">Marks: {mock.totalMarks}</span>
+              <h3 className="font-bold text-sm text-[#0F172A]">{mock.title}</h3>
+              <p className="text-xs text-[#64748B]">{mock.description}</p>
+              <div className="pt-2 border-t border-[#E2E8F0] flex justify-between text-xs font-semibold">
+                <span className="text-[#64748B] tabular-nums">{mock.totalQuestions} Qs · {mock.durationMinutes} mins</span>
+                <span className="text-[#16A34A] tabular-nums">{mock.totalMarks} Marks</span>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Platform Analytics Overview */}
+      {/* Materials Manager */}
+      {activeAdminTab === 'materials' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {materials.map((m) => (
+            <div key={m.id} className="p-5 rounded-xl bg-white border border-[#E2E8F0] shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-[#2563EB]">{m.category}</span>
+                <span className="text-[11px] text-[#64748B] tabular-nums">{m.readTimeMinutes} min read</span>
+              </div>
+              <h3 className="font-bold text-sm text-[#0F172A]">{m.title}</h3>
+              <p className="text-xs text-[#64748B] line-clamp-2">{m.summary}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Overview Analytics */}
       {activeAdminTab === 'overview' && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase">Active Aspirants</span>
-            <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400">42,850</div>
-            <p className="text-xs text-slate-400">Registered across 28 states</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-5 rounded-xl bg-white border border-[#E2E8F0] shadow-xs text-center">
+            <span className="text-xs font-semibold text-[#64748B]">Total Aspirants</span>
+            <div className="text-2xl font-bold text-[#0F172A] mt-1 tabular-nums">15,420</div>
+            <span className="text-[11px] text-[#16A34A] font-medium">+420 this week</span>
           </div>
 
-          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase">Total Mock Attempts</span>
-            <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">118,400</div>
-            <p className="text-xs text-slate-400">Avg Score: 138.2/200</p>
+          <div className="p-5 rounded-xl bg-white border border-[#E2E8F0] shadow-xs text-center">
+            <span className="text-xs font-semibold text-[#64748B]">Mock Tests Taken</span>
+            <div className="text-2xl font-bold text-[#2563EB] mt-1 tabular-nums">48,910</div>
+            <span className="text-[11px] text-[#64748B]">Completed attempts</span>
           </div>
 
-          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase">AI Queries Resolved</span>
-            <div className="text-3xl font-black text-purple-600 dark:text-purple-400">64,200</div>
-            <p className="text-xs text-slate-400">Gemini 3.8 Flash Solver</p>
+          <div className="p-5 rounded-xl bg-white border border-[#E2E8F0] shadow-xs text-center">
+            <span className="text-xs font-semibold text-[#64748B]">Question Bank Size</span>
+            <div className="text-2xl font-bold text-[#0F172A] mt-1 tabular-nums">{questions.length}</div>
+            <span className="text-[11px] text-[#64748B]">Verified questions</span>
+          </div>
+
+          <div className="p-5 rounded-xl bg-white border border-[#E2E8F0] shadow-xs text-center">
+            <span className="text-xs font-semibold text-[#64748B]">Average Platform Score</span>
+            <div className="text-2xl font-bold text-[#16A34A] mt-1 tabular-nums">136.8</div>
+            <span className="text-[11px] text-[#64748B]">Tier-1 UR Standard</span>
           </div>
         </div>
       )}
 
-      {/* Add Question Modal */}
+      {/* Modal: Add New Question */}
       {showAddQuestionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-2xl max-h-[90vh] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 overflow-y-auto space-y-4">
-            
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                Add Exam Question to Bank
-              </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F172A]/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl border border-[#E2E8F0] p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+              <h3 className="font-bold text-sm text-[#0F172A]">Add Question to Master Bank</h3>
               <button
                 onClick={() => setShowAddQuestionModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                className="p-1 rounded-md text-[#64748B] hover:text-[#0F172A]"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleAddQuestionSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold mb-1">Subject</label>
+                  <label className="block font-semibold text-[#0F172A] mb-1">Subject</label>
                   <select
                     value={newSubjectId}
                     onChange={(e) => setNewSubjectId(e.target.value as SubjectId)}
-                    className="w-full p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                    className="w-full p-2 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A]"
                   >
                     <option value="quantitative-aptitude">Quantitative Aptitude</option>
-                    <option value="reasoning">General Intelligence</option>
+                    <option value="reasoning">General Intelligence & Reasoning</option>
                     <option value="english">English Language</option>
                     <option value="general-awareness">General Awareness</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-1">Topic</label>
+                  <label className="block font-semibold text-[#0F172A] mb-1">Topic Name</label>
                   <input
                     type="text"
-                    required
+                    placeholder="e.g. Percentage, Syllogisms"
                     value={newTopic}
                     onChange={(e) => setNewTopic(e.target.value)}
-                    placeholder="e.g. Algebra / Syllogism"
-                    className="w-full p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                    required
+                    className="w-full p-2 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A]"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#0F172A] mb-1">Question Text</label>
+                <textarea
+                  rows={3}
+                  placeholder="Enter the complete question statement..."
+                  value={newQuestionText}
+                  onChange={(e) => setNewQuestionText(e.target.value)}
+                  required
+                  className="w-full p-2 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {newOptions.map((opt, i) => (
+                  <div key={i}>
+                    <label className="block font-semibold text-[#0F172A] mb-1">
+                      Option {String.fromCharCode(65 + i)}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={`Option ${String.fromCharCode(65 + i)} content`}
+                      value={opt}
+                      onChange={(e) => {
+                        const updated = [...newOptions] as [string, string, string, string];
+                        updated[i] = e.target.value;
+                        setNewOptions(updated);
+                      }}
+                      required
+                      className="w-full p-2 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A]"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold text-[#0F172A] mb-1">Correct Answer</label>
+                  <select
+                    value={newCorrectAnswer}
+                    onChange={(e) => setNewCorrectAnswer(Number(e.target.value))}
+                    className="w-full p-2 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A]"
+                  >
+                    <option value={0}>Option A</option>
+                    <option value={1}>Option B</option>
+                    <option value={2}>Option C</option>
+                    <option value={3}>Option D</option>
+                  </select>
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-1">Difficulty</label>
+                  <label className="block font-semibold text-[#0F172A] mb-1">Difficulty</label>
                   <select
                     value={newDifficulty}
                     onChange={(e) => setNewDifficulty(e.target.value as any)}
-                    className="w-full p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                    className="w-full p-2 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A]"
                   >
                     <option value="Easy">Easy</option>
                     <option value="Medium">Medium</option>
                     <option value="Hard">Hard</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="block font-semibold text-[#0F172A] mb-1">PYQ Year (Optional)</label>
+                  <input
+                    type="number"
+                    value={newPyqYear || ''}
+                    onChange={(e) => setNewPyqYear(e.target.value ? Number(e.target.value) : undefined)}
+                    placeholder="2024"
+                    className="w-full p-2 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A]"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block font-semibold mb-1">Question Statement</label>
-                <textarea
-                  required
-                  rows={3}
-                  value={newQuestionText}
-                  onChange={(e) => setNewQuestionText(e.target.value)}
-                  placeholder="Enter complete question statement..."
-                  className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="block font-semibold">4 Options (Select radio for Correct Answer)</label>
-                {newOptions.map((opt, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="correctOption"
-                      checked={newCorrectAnswer === idx}
-                      onChange={() => setNewCorrectAnswer(idx)}
-                      className="w-4 h-4 text-indigo-600"
-                    />
-                    <span className="font-bold w-4 text-center">{String.fromCharCode(65 + idx)}</span>
-                    <input
-                      type="text"
-                      required
-                      value={opt}
-                      onChange={(e) => {
-                        const copy = [...newOptions] as [string, string, string, string];
-                        copy[idx] = e.target.value;
-                        setNewOptions(copy);
-                      }}
-                      placeholder={`Option ${String.fromCharCode(65 + idx)}`}
-                      className="flex-1 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">Step-by-Step Explanation</label>
+                <label className="block font-semibold text-[#0F172A] mb-1">Step-by-Step Explanation</label>
                 <textarea
                   rows={2}
+                  placeholder="Explain the solution methodology..."
                   value={newExplanation}
                   onChange={(e) => setNewExplanation(e.target.value)}
-                  placeholder="Explain why the option is correct..."
-                  className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                  className="w-full p-2 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A]"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold mb-1">15-Second Shortcut Trick (Optional)</label>
+                <label className="block font-semibold text-[#0F172A] mb-1">Shortcut Trick (Optional)</label>
                 <input
                   type="text"
+                  placeholder="Exam shortcut or mental calculation trick"
                   value={newShortcutTrick}
                   onChange={(e) => setNewShortcutTrick(e.target.value)}
-                  placeholder="e.g. Unit digit elimination or fraction trick"
-                  className="w-full p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                  className="w-full p-2 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A]"
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-2 border-t border-[#E2E8F0]">
                 <button
                   type="button"
                   onClick={() => setShowAddQuestionModal(false)}
-                  className="py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500"
+                  className="px-4 py-2 rounded-md border border-[#E2E8F0] text-xs font-semibold text-[#0F172A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="py-2 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                  className="px-4 py-2 rounded-md bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold shadow-xs"
                 >
                   Save Question
                 </button>
