@@ -200,7 +200,8 @@ const AppContextProviderInner: React.FC<{ children: React.ReactNode }> = ({ chil
     setActivePageState(page);
     if (typeof window !== 'undefined') {
       const targetPath = pageToPath(page);
-      if (window.location.pathname !== targetPath) {
+      const currentPathWithSearch = window.location.pathname + window.location.search;
+      if (currentPathWithSearch !== targetPath) {
         window.history.pushState(null, '', targetPath);
       }
     }

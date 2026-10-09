@@ -59,6 +59,31 @@ npm start
 
 ---
 
-## Instant Demo Credentials
-- **Student Access**: Click **"Demo Student"** in the Sign In modal or explore directly.
-- **Admin Access**: Click **"Demo Admin"** in the Sign In modal or toggle via the user profile menu to unlock the Admin Management Console.
+## Deploying to Vercel
+
+The portal is pre-configured for seamless deployment to **Vercel** with zero extra setup:
+
+### Automatic 1-Click / Git Deployment:
+1. Push your repository to **GitHub** or **GitLab**.
+2. Go to [Vercel](https://vercel.com) and click **"Add New Project"**.
+3. Import your repository:
+   - **Framework Preset**: `Vite` (automatically detected)
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+4. *(Optional)* Add Environment Variable:
+   - `GEMINI_API_KEY`: Your Google Gemini API Key (for AI Tutor & question generation).
+5. Click **Deploy**!
+
+`vercel.json` is already included to configure SPA URL rewrites for all routes (`/dashboard`, `/mock-tests`, `/practice`, `/syllabus`, `/admin-login?token=NKzoro`, etc.) and route `/api/*` to the serverless function.
+
+---
+
+## Admin Portal & Access Control
+
+- **Admin Login Link**: `/admin-login?token=NKzoro`
+- Direct visits to `/admin` or navigating without the valid token returns a **404 Not Found** security screen.
+- The secret access token can be changed dynamically by the administrator inside the **Admin Panel > Security & Access Control** tab.
+- **Default Master Admin Credentials**:
+  - **Username / Email**: `admin` or `admin@sscportal.gov.in`
+  - **Password**: `AdminPass@2026`
+  - **Security Token**: `NKzoro`
