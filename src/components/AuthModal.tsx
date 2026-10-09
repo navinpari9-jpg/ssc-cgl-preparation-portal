@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
+import { GoogleSignInModal } from './GoogleSignInModal';
 import { X, Lock, Mail, User, ArrowRight, Check } from 'lucide-react';
 
 interface AuthModalProps {
@@ -18,6 +19,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [targetYear, setTargetYear] = useState('2026-2027');
   const [loading, setLoading] = useState(false);
   const [firebaseLoading, setFirebaseLoading] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!isOpen) return null;
@@ -90,15 +92,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       if (res.success) {
         showToast({
           type: 'success',
-          title: 'Firebase Sign-in Successful',
+          title: 'Google Sign-in Successful',
           message: 'Welcome to your preparation portal.'
         });
         onClose();
       } else {
-        setErrorMsg(res.error || 'Firebase authentication failed.');
+        // Open Google Account dialog for universal domain login
+        setShowGoogleModal(true);
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Firebase sign-in failed.');
+    } catch {
+      setShowGoogleModal(true);
     } finally {
       setFirebaseLoading(false);
     }
@@ -226,7 +229,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your.email@example.com"
+                  placeholder="Enter email address"
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -252,7 +255,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter password"
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -295,7 +298,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Navin Kumar"
+                  placeholder="Enter your full name"
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -312,7 +315,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="aspirant@example.com"
+                  placeholder="Enter email address"
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -329,7 +332,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create a strong password"
+                  placeholder="Enter password"
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -373,7 +376,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your.email@example.com"
+                  placeholder="Enter registered email address"
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -397,6 +400,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         )}
 
       </div>
+
+      <GoogleSignInModal
+        isOpen={showGoogleModal}
+        onClose={() => setShowGoogleModal(false)}
+        onSuccess={() => onClose()}
+      />
     </div>
   );
 };

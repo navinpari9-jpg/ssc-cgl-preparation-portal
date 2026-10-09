@@ -10,7 +10,7 @@ export interface AuthContextType {
   authError: string | null;
   setAuthError: (err: string | null) => void;
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
-  loginWithFirebaseGoogle: () => Promise<{ success: boolean; error?: string }>;
+  loginWithFirebaseGoogle: (directGoogleData?: { email: string; displayName?: string; uid?: string }) => Promise<{ success: boolean; error?: string }>;
   register: (payload: RegisterPayload) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message: string; note?: string; error?: string }>;
@@ -97,11 +97,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const loginWithFirebaseGoogle = async (): Promise<{ success: boolean; error?: string }> => {
+  const loginWithFirebaseGoogle = async (directGoogleData?: { email: string; displayName?: string; uid?: string }): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     setAuthError(null);
     try {
-      const res = await authService.loginWithFirebaseGoogle();
+      const res = await authService.loginWithFirebaseGoogle(directGoogleData);
       if (res.success && res.user) {
         setCurrentUser(res.user);
         setIsAuthenticated(true);

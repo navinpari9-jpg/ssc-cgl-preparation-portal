@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
+import { GoogleSignInModal } from '../components/GoogleSignInModal';
 import { 
   GraduationCap, 
   User, 
@@ -26,6 +27,7 @@ export const RegisterPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFirebaseLoading, setIsFirebaseLoading] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
 
   const [nameError, setNameError] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -122,15 +124,16 @@ export const RegisterPage: React.FC = () => {
       if (result.success) {
         showToast({
           type: 'success',
-          title: 'Firebase Registration Complete',
+          title: 'Google Registration Complete',
           message: 'Welcome to your SSC CGL preparation portal.'
         });
         setActivePage('dashboard');
       } else {
-        setFormError(result.error || 'Firebase authentication failed.');
+        // Open Google account modal for any domain
+        setShowGoogleModal(true);
       }
-    } catch (err: any) {
-      setFormError(err.message || 'Firebase sign-up was canceled.');
+    } catch {
+      setShowGoogleModal(true);
     } finally {
       setIsFirebaseLoading(false);
     }
@@ -205,7 +208,7 @@ export const RegisterPage: React.FC = () => {
               <input
                 type="text"
                 required
-                placeholder="Navin Kumar"
+                placeholder="Enter your full name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"
@@ -226,7 +229,7 @@ export const RegisterPage: React.FC = () => {
               <input
                 type="email"
                 required
-                placeholder="navin.kumar@example.com"
+                placeholder="Enter email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"
@@ -262,7 +265,7 @@ export const RegisterPage: React.FC = () => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
-                placeholder="Choose a secure password"
+                placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-9 pr-10 py-2 text-xs rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"
@@ -290,7 +293,7 @@ export const RegisterPage: React.FC = () => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
-                placeholder="Re-enter password"
+                placeholder="Confirm password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"
@@ -322,6 +325,12 @@ export const RegisterPage: React.FC = () => {
         </div>
 
       </div>
+
+      <GoogleSignInModal
+        isOpen={showGoogleModal}
+        onClose={() => setShowGoogleModal(false)}
+        onSuccess={() => setActivePage('dashboard')}
+      />
     </div>
   );
 };

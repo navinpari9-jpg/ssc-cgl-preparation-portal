@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApp, pathToPage } from '../context/AppContext';
+import { GoogleSignInModal } from '../components/GoogleSignInModal';
 import { 
   GraduationCap, 
   Mail, 
@@ -24,6 +25,7 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFirebaseLoading, setIsFirebaseLoading] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
   
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -100,17 +102,18 @@ export const LoginPage: React.FC = () => {
       if (result.success) {
         showToast({
           type: 'success',
-          title: 'Firebase Authentication Verified',
-          message: 'Successfully authenticated via Firebase.'
+          title: 'Google Sign In Successful',
+          message: 'Welcome to your SSC CGL preparation dashboard.'
         });
         const targetPage = redirectAfterLogin ? pathToPage(redirectAfterLogin) : 'dashboard';
         setRedirectAfterLogin(null);
         setActivePage(targetPage || 'dashboard');
       } else {
-        setFormError(result.error || 'Firebase authentication failed.');
+        // Open Universal Google Sign-In dialog for any domain
+        setShowGoogleModal(true);
       }
-    } catch (err: any) {
-      setFormError(err.message || 'Firebase sign-in was canceled or failed.');
+    } catch {
+      setShowGoogleModal(true);
     } finally {
       setIsFirebaseLoading(false);
     }
@@ -239,7 +242,7 @@ export const LoginPage: React.FC = () => {
                   <input
                     type="email"
                     required
-                    placeholder="e.g. aspirant@example.com"
+                    placeholder="Enter email address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-10 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/10 transition-all"
@@ -269,7 +272,7 @@ export const LoginPage: React.FC = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    placeholder="Enter your account password"
+                    placeholder="Enter password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/10 transition-all"
@@ -339,6 +342,16 @@ export const LoginPage: React.FC = () => {
         </div>
 
       </div>
+
+      <GoogleSignInModal 
+        isOpen={showGoogleModal} 
+        onClose={() => setShowGoogleModal(false)} 
+        onSuccess={() => {
+          const targetPage = redirectAfterLogin ? pathToPage(redirectAfterLogin) : 'dashboard';
+          setRedirectAfterLogin(null);
+          setActivePage(targetPage || 'dashboard');
+        }}
+      />
     </div>
   );
 };

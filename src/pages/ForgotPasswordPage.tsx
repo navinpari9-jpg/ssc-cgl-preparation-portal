@@ -139,7 +139,7 @@ export const ForgotPasswordPage: React.FC = () => {
                     setEmail(e.target.value);
                     if (emailError) setEmailError('');
                   }}
-                  placeholder="navin.kumar@example.com"
+                  placeholder="Enter registered email address"
                   aria-invalid={Boolean(emailError)}
                   className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none transition-colors ${
                     emailError 
