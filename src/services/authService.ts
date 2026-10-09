@@ -2,6 +2,7 @@ import { LoginCredentials, RegisterPayload, AuthResponse } from '../types/auth';
 import { UserProfile } from '../types';
 import { auth, googleProvider } from '../lib/firebase';
 import { signInWithPopup } from 'firebase/auth';
+import { userSyncManager } from './userSyncManager';
 
 const TOKEN_KEY = 'ssc_auth_token';
 const REMEMBER_KEY = 'ssc_remember_me';
@@ -32,6 +33,7 @@ export const authService = {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REMEMBER_KEY);
     sessionStorage.removeItem(TOKEN_KEY);
+    userSyncManager.setCurrentUserInStorage(null);
   },
 
   getAdminToken(): string | null {
@@ -79,32 +81,24 @@ export const authService = {
       if (data.token) {
         this.setToken(data.token, credentials.rememberMe !== false);
       }
+      if (data.user) {
+        userSyncManager.setCurrentUserInStorage(data.user);
+      }
       return data;
     } catch (err: any) {
       // Offline fallback for static deployments (e.g. Vercel static hosting)
       if (credentials.email) {
+        const existingProfile = userSyncManager.getUserProfile(credentials.email);
         const fallbackUser: UserProfile = {
-          id: 'user-demo',
-          name: credentials.email.split('@')[0] || 'Navin Kumar',
+          ...existingProfile,
+          id: existingProfile.id || 'user-cred-' + Date.now(),
+          name: existingProfile.name || credentials.email.split('@')[0] || 'Aspirant',
           email: credentials.email,
-          role: 'student',
-          targetExamYear: '2026-2027',
-          targetTier: 'Tier-1',
-          streak: 12,
-          lastStreakDate: new Date().toISOString().split('T')[0],
-          totalStudyMinutes: 3870,
-          questionsSolved: 1245,
-          correctCount: 1021,
-          mockTestsCompleted: 18,
-          averageScore: 148.5,
-          accuracy: 82,
-          bookmarkedQuestionIds: ['q-quant-03', 'q-reas-02'],
-          bookmarkedMaterialIds: ['mat-quant-formulas'],
-          hideFromLeaderboard: false,
-          achievements: []
+          role: 'student'
         };
         const token = 'token-offline-' + Date.now();
         this.setToken(token, credentials.rememberMe !== false);
+        userSyncManager.setCurrentUserInStorage(fallbackUser);
         return {
           success: true,
           token,
@@ -140,6 +134,9 @@ export const authService = {
         return { success: false, error: 'No email found for Google account.' };
       }
 
+      // Check previously saved data for this Google user to preserve streak, bookmarks, and test scores
+      const existingGoogleData = userSyncManager.getUserProfile(email);
+
       // Sync with server if available
       try {
         const res = await fetch('/api/auth/firebase-sync', {
@@ -153,49 +150,54 @@ export const authService = {
         });
         if (res.ok) {
           const data = await res.json();
-          if (data.success && data.token) {
+          if (data.success && data.token && data.user) {
             this.setToken(data.token, true);
-            return data;
+            const mergedUser: UserProfile = {
+              ...data.user,
+              ...existingGoogleData,
+              id: data.user.id || 'google-' + uid,
+              name: displayName || data.user.name,
+              email: email
+            };
+            userSyncManager.setCurrentUserInStorage(mergedUser);
+            return {
+              success: true,
+              token: data.token,
+              user: mergedUser
+            };
           }
         }
       } catch {
         // Fallback for static/offline hosting
       }
 
-      // Offline / Every Domain fallback: Create authenticated Google session
-      const fallbackUser: UserProfile = {
+      // Offline / Every Domain fallback: Create authenticated Google session with synced data
+      const syncedUser: UserProfile = {
+        ...existingGoogleData,
         id: 'user-' + uid,
         name: displayName,
         email: email,
         role: 'student',
-        targetExamYear: '2026-2027',
-        targetTier: 'Tier-1',
-        streak: 1,
-        lastStreakDate: new Date().toISOString().split('T')[0],
-        totalStudyMinutes: 0,
-        questionsSolved: 0,
-        correctCount: 0,
-        mockTestsCompleted: 0,
-        averageScore: 0,
-        accuracy: 0,
-        bookmarkedQuestionIds: [],
-        bookmarkedMaterialIds: [],
-        hideFromLeaderboard: false,
-        achievements: []
+        targetExamYear: existingGoogleData.targetExamYear || '2026-2027',
+        targetTier: existingGoogleData.targetTier || 'Tier-1',
+        streak: existingGoogleData.streak || 1,
+        lastStreakDate: new Date().toISOString().split('T')[0]
       };
       const token = 'cgl_token_google_' + uid;
       this.setToken(token, true);
+      userSyncManager.setCurrentUserInStorage(syncedUser);
+
       return {
         success: true,
         token,
-        user: fallbackUser
+        user: syncedUser
       };
     } catch (err: any) {
       console.warn('Firebase Auth note:', err);
       const errCode = err.code || '';
       return {
         success: false,
-        error: errCode || err.message || 'Firebase Google authentication was canceled or encountered an error.'
+        error: errCode || err.message || 'Firebase Google authentication encountered an error.'
       };
     }
   },
@@ -217,8 +219,42 @@ export const authService = {
       if (data.token) {
         this.setToken(data.token, true);
       }
+      if (data.user) {
+        userSyncManager.setCurrentUserInStorage(data.user);
+      }
       return data;
     } catch (err: any) {
+      // Offline registration support for static hosting
+      if (payload.email && payload.name) {
+        const newUser: UserProfile = {
+          id: 'user-' + Date.now(),
+          name: payload.name.trim(),
+          email: payload.email.trim(),
+          role: 'student',
+          targetExamYear: payload.targetExamYear || '2026-2027',
+          targetTier: 'Tier-1',
+          streak: 1,
+          lastStreakDate: new Date().toISOString().split('T')[0],
+          totalStudyMinutes: 0,
+          questionsSolved: 0,
+          correctCount: 0,
+          mockTestsCompleted: 0,
+          averageScore: 0,
+          accuracy: 0,
+          bookmarkedQuestionIds: [],
+          bookmarkedMaterialIds: [],
+          hideFromLeaderboard: false,
+          achievements: []
+        };
+        const token = 'cgl_token_reg_' + Date.now();
+        this.setToken(token, true);
+        userSyncManager.setCurrentUserInStorage(newUser);
+        return {
+          success: true,
+          token,
+          user: newUser
+        };
+      }
       return {
         success: false,
         error: 'Registration request failed. Please check your network and try again.'
@@ -285,13 +321,29 @@ export const authService = {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        this.clearToken();
-        return { success: false, error: data.error || 'Session expired.' };
+        // Only clear token if server explicitly rejected with 401/403
+        if (res.status === 401 || res.status === 403) {
+          this.clearToken();
+          return { success: false, error: data.error || 'Session expired.' };
+        }
+      } else if (data.user) {
+        userSyncManager.setCurrentUserInStorage(data.user);
+        return data;
       }
-      return data;
-    } catch (err) {
-      return { success: false, error: 'Network error checking session.' };
+    } catch {
+      // Network error or static deployment
     }
+
+    const cachedUser = userSyncManager.getCurrentUserFromStorage();
+    if (cachedUser) {
+      return {
+        success: true,
+        user: cachedUser,
+        session: { token, email: cachedUser.email }
+      };
+    }
+
+    return { success: false, error: 'No active session found.' };
   },
 
   async logout(): Promise<void> {

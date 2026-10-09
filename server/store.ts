@@ -194,6 +194,9 @@ class Store {
   private testAttempts: TestAttemptResult[] = [];
   private profile: UserProfile = { ...defaultProfile };
   private studyPlan: DailyStudyPlan = { ...defaultStudyPlan };
+  private userProfiles: Map<string, UserProfile> = new Map();
+  private userAttempts: Map<string, TestAttemptResult[]> = new Map();
+  private userStudyPlans: Map<string, DailyStudyPlan> = new Map();
   private notifications = [...INITIAL_NOTIFICATIONS];
   private accounts: StoredUserAccount[] = [...initialAccounts];
   private sessions: Map<string, AuthSession> = new Map();
@@ -416,6 +419,8 @@ class Store {
       targetExamYear: account.targetExamYear || '2026-2027'
     };
     this.profile = profile;
+    this.userProfiles.set(account.id, profile);
+    this.userProfiles.set(account.email, profile);
 
     return { success: true, user: profile, token };
   }
@@ -841,26 +846,39 @@ class Store {
     return newItem;
   }
 
-  saveTestAttempt(attempt: Omit<TestAttemptResult, 'id'>): TestAttemptResult {
+  saveTestAttempt(attempt: Omit<TestAttemptResult, 'id'>, userId?: string): TestAttemptResult {
     const result: TestAttemptResult = {
       ...attempt,
       id: `attempt-${Date.now()}`
     };
     this.testAttempts.unshift(result);
 
-    // Update profile stats
-    this.profile.mockTestsCompleted += 1;
-    this.profile.questionsSolved += attempt.attemptedQuestions;
-    this.profile.correctCount += attempt.correctAnswers;
-    const totalQuestionsAttempted = this.profile.questionsSolved;
-    this.profile.accuracy = totalQuestionsAttempted > 0 
-      ? Math.round((this.profile.correctCount / totalQuestionsAttempted) * 1000) / 10 
+    const uKey = userId ? userId.trim().toLowerCase() : null;
+    if (uKey) {
+      const userList = this.userAttempts.get(uKey) || [];
+      userList.unshift(result);
+      this.userAttempts.set(uKey, userList);
+    }
+
+    // Update target user profile stats
+    const p = this.getProfile(userId);
+    p.mockTestsCompleted = (p.mockTestsCompleted || 0) + 1;
+    p.questionsSolved = (p.questionsSolved || 0) + (attempt.attemptedQuestions || 0);
+    p.correctCount = (p.correctCount || 0) + (attempt.correctAnswers || 0);
+    const totalQuestionsAttempted = p.questionsSolved;
+    p.accuracy = totalQuestionsAttempted > 0 
+      ? Math.round((p.correctCount / totalQuestionsAttempted) * 1000) / 10 
       : 0;
 
     // Recalculate average score
-    const scores = this.testAttempts.map(a => a.score);
-    this.profile.averageScore = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
-    this.profile.totalStudyMinutes += Math.round(attempt.totalTimeSpentSeconds / 60);
+    const attempts = this.getTestAttempts(userId);
+    const scores = attempts.map(a => a.score);
+    p.averageScore = scores.length > 0 
+      ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
+      : attempt.score;
+    p.totalStudyMinutes = (p.totalStudyMinutes || 0) + Math.round((attempt.totalTimeSpentSeconds || 0) / 60);
+
+    this.updateProfile(p, userId);
 
     // Update target mock test attempt count
     const mock = this.mockTests.find(m => m.id === attempt.testId);
@@ -871,58 +889,90 @@ class Store {
     return result;
   }
 
-  getTestAttempts(): TestAttemptResult[] {
+  getTestAttempts(userId?: string): TestAttemptResult[] {
+    const uKey = userId ? userId.trim().toLowerCase() : null;
+    if (uKey && this.userAttempts.has(uKey)) {
+      return this.userAttempts.get(uKey)!;
+    }
     return this.testAttempts;
   }
 
-  getProfile(): UserProfile {
+  getProfile(userId?: string): UserProfile {
+    const uKey = userId ? userId.trim().toLowerCase() : null;
+    if (uKey && this.userProfiles.has(uKey)) {
+      return this.userProfiles.get(uKey)!;
+    }
     return this.profile;
   }
 
-  updateProfile(updates: Partial<UserProfile>): UserProfile {
-    this.profile = { ...this.profile, ...updates };
-    return this.profile;
+  updateProfile(updates: Partial<UserProfile>, userId?: string): UserProfile {
+    const current = this.getProfile(userId);
+    const updated = { ...current, ...updates };
+    const uKey = userId ? userId.trim().toLowerCase() : null;
+    if (uKey) {
+      this.userProfiles.set(uKey, updated);
+      if (updated.id) this.userProfiles.set(updated.id.toLowerCase(), updated);
+      if (updated.email) this.userProfiles.set(updated.email.toLowerCase(), updated);
+    }
+    this.profile = updated;
+    return updated;
   }
 
-  toggleBookmark(type: 'question' | 'material', id: string): { bookmarked: boolean } {
+  toggleBookmark(type: 'question' | 'material', id: string, userId?: string): { bookmarked: boolean } {
+    const profile = this.getProfile(userId);
+    let bookmarked = false;
     if (type === 'question') {
-      const idx = this.profile.bookmarkedQuestionIds.indexOf(id);
+      const idx = profile.bookmarkedQuestionIds.indexOf(id);
       if (idx > -1) {
-        this.profile.bookmarkedQuestionIds.splice(idx, 1);
-        return { bookmarked: false };
+        profile.bookmarkedQuestionIds.splice(idx, 1);
+        bookmarked = false;
       } else {
-        this.profile.bookmarkedQuestionIds.push(id);
-        return { bookmarked: true };
+        profile.bookmarkedQuestionIds.push(id);
+        bookmarked = true;
       }
     } else {
-      const idx = this.profile.bookmarkedMaterialIds.indexOf(id);
+      const idx = profile.bookmarkedMaterialIds.indexOf(id);
       if (idx > -1) {
-        this.profile.bookmarkedMaterialIds.splice(idx, 1);
-        return { bookmarked: false };
+        profile.bookmarkedMaterialIds.splice(idx, 1);
+        bookmarked = false;
       } else {
-        this.profile.bookmarkedMaterialIds.push(id);
-        return { bookmarked: true };
+        profile.bookmarkedMaterialIds.push(id);
+        bookmarked = true;
       }
     }
+    this.updateProfile(profile, userId);
+    return { bookmarked };
   }
 
-  getStudyPlan(): DailyStudyPlan {
+  getStudyPlan(userId?: string): DailyStudyPlan {
+    const uKey = userId ? userId.trim().toLowerCase() : null;
+    if (uKey && this.userStudyPlans.has(uKey)) {
+      return this.userStudyPlans.get(uKey)!;
+    }
     return this.studyPlan;
   }
 
-  updateStudyPlan(plan: Partial<DailyStudyPlan>): DailyStudyPlan {
-    this.studyPlan = { ...this.studyPlan, ...plan };
-    return this.studyPlan;
+  updateStudyPlan(plan: Partial<DailyStudyPlan>, userId?: string): DailyStudyPlan {
+    const current = this.getStudyPlan(userId);
+    const updated = { ...current, ...plan };
+    const uKey = userId ? userId.trim().toLowerCase() : null;
+    if (uKey) {
+      this.userStudyPlans.set(uKey, updated);
+    }
+    this.studyPlan = updated;
+    return updated;
   }
 
-  toggleTaskCompleted(taskId: string): DailyStudyPlan {
-    this.studyPlan.schedule = this.studyPlan.schedule.map(t => {
+  toggleTaskCompleted(taskId: string, userId?: string): DailyStudyPlan {
+    const plan = this.getStudyPlan(userId);
+    const updatedSchedule = plan.schedule.map(t => {
       if (t.id === taskId) {
         return { ...t, completed: !t.completed };
       }
       return t;
     });
-    return this.studyPlan;
+    const updated = { ...plan, schedule: updatedSchedule };
+    return this.updateStudyPlan(updated, userId);
   }
 
   getLeaderboard() {

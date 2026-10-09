@@ -173,7 +173,7 @@ export const RegisterPage: React.FC = () => {
             type="button"
             onClick={handleGoogleSignup}
             disabled={isSubmitting || isFirebaseLoading}
-            className="w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
+            className="w-full py-3 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold transition-all shadow-xs flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
           >
             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -181,8 +181,11 @@ export const RegisterPage: React.FC = () => {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            <span>{isFirebaseLoading ? 'Connecting to Firebase...' : 'Register with Google / Firebase'}</span>
+            <span>{isFirebaseLoading ? 'Connecting to Google...' : 'Register with Google Account'}</span>
           </button>
+          <div className="text-[10px] text-center text-slate-400 mt-1">
+            Works on all domains • Automatic cloud sync
+          </div>
 
           <div className="relative my-4">
             <div className="absolute inset-0 flex items-center">
@@ -208,6 +211,7 @@ export const RegisterPage: React.FC = () => {
               <input
                 type="text"
                 required
+                autoComplete="name"
                 placeholder="Enter your full name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -229,7 +233,8 @@ export const RegisterPage: React.FC = () => {
               <input
                 type="email"
                 required
-                placeholder="Enter email address"
+                autoComplete="email"
+                placeholder="Enter your email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"
@@ -265,7 +270,8 @@ export const RegisterPage: React.FC = () => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
-                placeholder="Enter password"
+                autoComplete="new-password"
+                placeholder="Create a password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-9 pr-10 py-2 text-xs rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"
@@ -293,7 +299,8 @@ export const RegisterPage: React.FC = () => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
-                placeholder="Confirm password"
+                autoComplete="new-password"
+                placeholder="Re-enter your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"

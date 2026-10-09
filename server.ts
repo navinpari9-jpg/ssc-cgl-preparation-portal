@@ -131,13 +131,20 @@ app.delete('/api/mock-tests/:id', (req: Request, res: Response) => {
 });
 
 // Test Attempts & Submissions
+// Test Attempts with User-scoped isolation
 app.post('/api/test-attempts', (req: Request, res: Response) => {
-  const attempt = store.saveTestAttempt(req.body);
+  const token = getBearerToken(req);
+  const session = store.validateSession(token);
+  const userKey = session?.userId || session?.email;
+  const attempt = store.saveTestAttempt(req.body, userKey);
   res.status(201).json(attempt);
 });
 
 app.get('/api/test-attempts', (req: Request, res: Response) => {
-  res.json(store.getTestAttempts());
+  const token = getBearerToken(req);
+  const session = store.validateSession(token);
+  const userKey = session?.userId || session?.email;
+  res.json(store.getTestAttempts(userKey));
 });
 
 // Study Materials Library
@@ -192,17 +199,26 @@ app.post('/api/current-affairs', (req: Request, res: Response) => {
 
 // Daily Study Planner
 app.get('/api/study-plan', (req: Request, res: Response) => {
-  res.json(store.getStudyPlan());
+  const token = getBearerToken(req);
+  const session = store.validateSession(token);
+  const userKey = session?.userId || session?.email;
+  res.json(store.getStudyPlan(userKey));
 });
 
 app.post('/api/study-plan', (req: Request, res: Response) => {
-  const plan = store.updateStudyPlan(req.body);
+  const token = getBearerToken(req);
+  const session = store.validateSession(token);
+  const userKey = session?.userId || session?.email;
+  const plan = store.updateStudyPlan(req.body, userKey);
   res.json(plan);
 });
 
 app.post('/api/study-plan/toggle-task', (req: Request, res: Response) => {
+  const token = getBearerToken(req);
+  const session = store.validateSession(token);
+  const userKey = session?.userId || session?.email;
   const { taskId } = req.body;
-  const plan = store.toggleTaskCompleted(taskId);
+  const plan = store.toggleTaskCompleted(taskId, userKey);
   res.json(plan);
 });
 
@@ -213,17 +229,26 @@ app.get('/api/leaderboard', (req: Request, res: Response) => {
 
 // User Profile & Bookmarks
 app.get('/api/user/profile', (req: Request, res: Response) => {
-  res.json(store.getProfile());
+  const token = getBearerToken(req);
+  const session = store.validateSession(token);
+  const userKey = session?.userId || session?.email;
+  res.json(store.getProfile(userKey));
 });
 
 app.post('/api/user/profile', (req: Request, res: Response) => {
-  const profile = store.updateProfile(req.body);
+  const token = getBearerToken(req);
+  const session = store.validateSession(token);
+  const userKey = session?.userId || session?.email;
+  const profile = store.updateProfile(req.body, userKey);
   res.json(profile);
 });
 
 app.post('/api/user/bookmark', (req: Request, res: Response) => {
+  const token = getBearerToken(req);
+  const session = store.validateSession(token);
+  const userKey = session?.userId || session?.email;
   const { type, id } = req.body;
-  const result = store.toggleBookmark(type, id);
+  const result = store.toggleBookmark(type, id, userKey);
   res.json(result);
 });
 
@@ -479,7 +504,7 @@ app.get('/api/auth/me', (req: Request, res: Response) => {
 
   res.json({
     success: true,
-    user: store.getProfile(),
+    user: store.getProfile(session.userId || session.email),
     session
   });
 });

@@ -653,7 +653,7 @@ export const AdminPage: React.FC = () => {
               <input
                 type="text"
                 required
-                placeholder="Enter authorized secret token name (e.g. NKzoro)"
+                placeholder="Enter authorized secret token name"
                 value={secretTokenInput}
                 onChange={(e) => setSecretTokenInput(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 font-mono text-xs transition-all"
@@ -670,7 +670,7 @@ export const AdminPage: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="admin or admin@sscportal.gov.in"
+                  placeholder="Enter admin username or email"
                   value={adminUsername}
                   onChange={(e) => setAdminUsername(e.target.value)}
                   className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 text-xs transition-all"
@@ -688,7 +688,7 @@ export const AdminPage: React.FC = () => {
                 <input
                   type={showAdminPassword ? 'text' : 'password'}
                   required
-                  placeholder="••••••••••••"
+                  placeholder="Enter admin password"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 text-xs transition-all"
@@ -1422,7 +1422,7 @@ export const AdminPage: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Complete Mensuration Formula Pocket Book"
+                    placeholder="Enter study material title"
                     value={assetTitle}
                     onChange={(e) => setAssetTitle(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-600 focus:bg-white"
@@ -1627,7 +1627,7 @@ export const AdminPage: React.FC = () => {
                     required
                     value={inputNewSecretToken}
                     onChange={(e) => setInputNewSecretToken(e.target.value)}
-                    placeholder="Enter new secret token name (e.g. NKzoro)"
+                    placeholder="Enter new secret token name"
                     className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white font-mono text-xs focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   />
                   <button
@@ -1695,7 +1695,7 @@ export const AdminPage: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Rahul Sharma"
+                  placeholder="Enter student full name"
                   value={newStudentName}
                   onChange={(e) => setNewStudentName(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-600"
@@ -1707,7 +1707,7 @@ export const AdminPage: React.FC = () => {
                 <input
                   type="email"
                   required
-                  placeholder="rahul.sharma@example.com"
+                  placeholder="Enter student email address"
                   value={newStudentEmail}
                   onChange={(e) => setNewStudentEmail(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-600"
@@ -1856,7 +1856,7 @@ export const AdminPage: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Percentage & Profit"
+                    placeholder="Enter topic name"
                     value={newTopic}
                     onChange={(e) => setNewTopic(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50"
@@ -1930,7 +1930,7 @@ export const AdminPage: React.FC = () => {
                     type="number"
                     value={newPyqYear || ''}
                     onChange={(e) => setNewPyqYear(e.target.value ? parseInt(e.target.value) : undefined)}
-                    placeholder="e.g. 2024"
+                    placeholder="Enter PYQ year (optional)"
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50"
                   />
                 </div>
@@ -2003,7 +2003,7 @@ export const AdminPage: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. SSC CGL 2026 Tier-1 Full CBT Mock #09"
+                  placeholder="Enter CBT mock test title"
                   value={newMockTitle}
                   onChange={(e) => setNewMockTitle(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-600"

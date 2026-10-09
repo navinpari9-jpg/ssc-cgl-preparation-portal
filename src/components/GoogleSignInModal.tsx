@@ -1,13 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ArrowRight, ShieldCheck, Mail, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
+import firebaseConfig from '../../firebase-applet-config.json';
 
 interface GoogleSignInModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
   initialEmail?: string;
+}
+
+function parseJwt(token: string) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
 }
 
 export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
@@ -24,6 +41,58 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  useEffect(() => {
+    if (!isOpen) return;
+    try {
+      const win = window as any;
+      if (win.google?.accounts?.id && firebaseConfig.oAuthClientId) {
+        win.google.accounts.id.initialize({
+          client_id: firebaseConfig.oAuthClientId,
+          callback: async (response: any) => {
+            if (response.credential) {
+              const payload = parseJwt(response.credential);
+              if (payload && payload.email) {
+                setSubmitting(true);
+                const result = await loginWithFirebaseGoogle({
+                  email: payload.email,
+                  displayName: payload.name || payload.email.split('@')[0],
+                  uid: payload.sub
+                });
+                if (result.success) {
+                  showToast({
+                    type: 'success',
+                    title: 'Google Sign In Successful',
+                    message: `Welcome ${payload.name || payload.email} to SSC CGL Portal`
+                  });
+                  onClose();
+                  if (onSuccess) {
+                    onSuccess();
+                  } else {
+                    setActivePage('dashboard');
+                  }
+                }
+                setSubmitting(false);
+              }
+            }
+          }
+        });
+        const container = document.getElementById('google-gsi-button-container');
+        if (container) {
+          container.innerHTML = '';
+          win.google.accounts.id.renderButton(container, {
+            theme: 'outline',
+            size: 'large',
+            width: 340,
+            text: 'continue_with',
+            shape: 'rectangular'
+          });
+        }
+      }
+    } catch {
+      // Ignore GIS init errors if domain not in authorized origins
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,7 +104,7 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
     }
 
     if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
-      setErrorMsg('Please enter a valid Google email address (e.g. name@gmail.com).');
+      setErrorMsg('Please enter a valid Google email address.');
       return;
     }
 
@@ -110,6 +179,21 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
             {errorMsg}
           </div>
         )}
+
+        {/* Native One-Click Google Account Sign-In (Official GIS) */}
+        <div className="mb-4 flex flex-col items-center">
+          <div id="google-gsi-button-container" className="flex justify-center min-h-[40px] w-full"></div>
+          <div className="relative w-full my-3">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-[10px] uppercase">
+              <span className="bg-white px-2 text-slate-400 font-semibold tracking-wider">
+                Or enter Google account details
+              </span>
+            </div>
+          </div>
+        </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

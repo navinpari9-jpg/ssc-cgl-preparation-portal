@@ -22,6 +22,8 @@ import {
   fallbackStudyPlan,
   fallbackStudentDoubts
 } from '../data/fallbackData';
+import { userSyncManager } from './userSyncManager';
+import { authService } from './authService';
 
 export const api = {
   async getSubjects(): Promise<SubjectMetadata[]> {
@@ -153,27 +155,31 @@ export const api = {
     try {
       const res = await fetch('/api/test-attempts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authService.getAuthHeaders(),
         body: JSON.stringify(attempt)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        userSyncManager.recordTestAttempt(data);
+        return data;
+      }
+    } catch {
+      // Fallback
+    }
+    const res = userSyncManager.recordTestAttempt(attempt);
+    return res.attempt;
+  },
+
+  async getTestAttempts(): Promise<TestAttemptResult[]> {
+    try {
+      const res = await fetch('/api/test-attempts', {
+        headers: authService.getAuthHeaders()
       });
       if (res.ok) return await res.json();
     } catch {
       // Fallback
     }
-    return {
-      ...attempt,
-      id: `att-${Date.now()}`
-    };
-  },
-
-  async getTestAttempts(): Promise<TestAttemptResult[]> {
-    try {
-      const res = await fetch('/api/test-attempts');
-      if (res.ok) return await res.json();
-    } catch {
-      // Fallback
-    }
-    return [];
+    return userSyncManager.getTestAttempts();
   },
 
   async getStudyMaterials(params?: { 
@@ -274,43 +280,43 @@ export const api = {
 
   async getStudyPlan(): Promise<DailyStudyPlan> {
     try {
-      const res = await fetch('/api/study-plan');
+      const res = await fetch('/api/study-plan', {
+        headers: authService.getAuthHeaders()
+      });
       if (res.ok) return await res.json();
     } catch {
       // Fallback
     }
-    return fallbackStudyPlan;
+    return userSyncManager.getStudyPlan();
   },
 
   async updateStudyPlan(plan: Partial<DailyStudyPlan>): Promise<DailyStudyPlan> {
     try {
       const res = await fetch('/api/study-plan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authService.getAuthHeaders(),
         body: JSON.stringify(plan)
       });
       if (res.ok) return await res.json();
     } catch {
       // Fallback
     }
-    return { ...fallbackStudyPlan, ...plan };
+    const current = userSyncManager.getStudyPlan();
+    return userSyncManager.saveStudyPlan({ ...current, ...plan });
   },
 
   async toggleStudyTask(taskId: string): Promise<DailyStudyPlan> {
     try {
       const res = await fetch('/api/study-plan/toggle-task', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authService.getAuthHeaders(),
         body: JSON.stringify({ taskId })
       });
       if (res.ok) return await res.json();
     } catch {
       // Fallback
     }
-    const updatedSchedule = fallbackStudyPlan.schedule.map(t => 
-      t.id === taskId ? { ...t, completed: !t.completed } : t
-    );
-    return { ...fallbackStudyPlan, schedule: updatedSchedule };
+    return userSyncManager.toggleStudyPlanTask(taskId);
   },
 
   async getLeaderboard(): Promise<LeaderboardEntry[]> {
@@ -325,40 +331,57 @@ export const api = {
 
   async getUserProfile(): Promise<UserProfile> {
     try {
-      const res = await fetch('/api/user/profile');
-      if (res.ok) return await res.json();
+      const res = await fetch('/api/user/profile', {
+        headers: authService.getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        userSyncManager.saveUserProfile(data);
+        return data;
+      }
     } catch {
       // Fallback
     }
-    return fallbackProfile;
+    return userSyncManager.getUserProfile();
   },
 
   async updateUserProfile(updates: Partial<UserProfile>): Promise<UserProfile> {
     try {
       const res = await fetch('/api/user/profile', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authService.getAuthHeaders(),
         body: JSON.stringify(updates)
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        userSyncManager.saveUserProfile(data);
+        return data;
+      }
     } catch {
       // Fallback
     }
-    return { ...fallbackProfile, ...updates };
+    const current = userSyncManager.getUserProfile();
+    const updated = { ...current, ...updates };
+    return userSyncManager.saveUserProfile(updated);
   },
 
   async toggleBookmark(type: 'question' | 'material', id: string): Promise<{ bookmarked: boolean }> {
     try {
       const res = await fetch('/api/user/bookmark', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authService.getAuthHeaders(),
         body: JSON.stringify({ type, id })
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        userSyncManager.toggleBookmark(type, id);
+        return data;
+      }
     } catch {
       // Fallback
     }
-    return { bookmarked: true };
+    const result = userSyncManager.toggleBookmark(type, id);
+    return { bookmarked: result.bookmarked };
   },
 
   async getNotifications(): Promise<NotificationItem[]> {
