@@ -756,15 +756,16 @@ export const api = {
           ...(secret ? { 'x-secret-token': secret } : {})
         }
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list)) return list;
+      }
     } catch {
       // Fallback
     }
+    // Return clean master admin without dummy mock students
     return [
-      { id: 'user-admin', name: 'SSC Master Admin', email: 'admin@sscportal.gov.in', role: 'admin', targetExamYear: '2026-2027', loginCount: 15, createdAt: '2026-09-01T00:00:00.000Z' },
-      { id: 'user-01', name: 'Aditya Sharma', email: 'aditya.sharma@example.com', role: 'student', targetExamYear: '2026-2027', loginCount: 42, createdAt: '2026-09-05T00:00:00.000Z' },
-      { id: 'user-02', name: 'Priya Mukherjee', email: 'priya.m@example.com', role: 'student', targetExamYear: '2026-2027', loginCount: 38, createdAt: '2026-09-08T00:00:00.000Z' },
-      { id: 'user-03', name: 'Rohan Verma', email: 'rohan.v@example.com', role: 'student', targetExamYear: '2026-2027', loginCount: 29, createdAt: '2026-09-12T00:00:00.000Z' }
+      { id: 'user-admin', name: 'SSC Master Admin', email: 'admin@sscportal.gov.in', role: 'admin', targetExamYear: '2026-2027', loginCount: 1, createdAt: '2026-09-01T00:00:00.000Z' }
     ];
   },
 
@@ -783,6 +784,23 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to create user');
+    }
+    return res.json();
+  },
+
+  async adminResetStudents() {
+    const adminToken = typeof window !== 'undefined' ? sessionStorage.getItem('ssc_admin_token') : null;
+    const secret = typeof window !== 'undefined' ? sessionStorage.getItem('ssc_admin_secret') : null;
+    const res = await fetch('/api/admin/reset-students', {
+      method: 'POST',
+      headers: {
+        ...(adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}),
+        ...(secret ? { 'x-secret-token': secret } : {})
+      }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to reset students');
     }
     return res.json();
   },

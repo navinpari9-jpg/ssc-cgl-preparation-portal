@@ -150,13 +150,13 @@ export const RegisterPage: React.FC = () => {
           </div>
 
           <div className="text-xs font-semibold text-[#2563EB]">
-            Aspirant Registration (Required Before Login)
+            Aspirant Registration & Instant Google Access
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[#0F172A]">
             Create Your Account
           </h1>
           <p className="text-xs text-[#64748B]">
-            Register with your details to access full-length mock tests, practice banks, and AI mentor.
+            Sign in instantly with any Google account or register with email to start CBT mock tests.
           </p>
         </div>
 
@@ -181,10 +181,10 @@ export const RegisterPage: React.FC = () => {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            <span>{isFirebaseLoading ? 'Connecting to Google...' : 'Register with Google Account'}</span>
+            <span>{isFirebaseLoading ? 'Connecting to Google...' : 'Continue with Any Google Account'}</span>
           </button>
           <div className="text-[10px] text-center text-slate-400 mt-1">
-            Works on all domains • Automatic cloud sync
+            Open to all users • No restrictions • Automatic cloud sync
           </div>
 
           <div className="relative my-4">

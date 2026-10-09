@@ -167,10 +167,10 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
           </div>
 
           <h3 className="text-xl font-bold text-slate-900 tracking-tight">
-            Sign In with Google Account
+            Sign In with Any Google Account
           </h3>
           <p className="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
-            Universal sign-in enabled for every domain. Connect with any Google or Gmail account.
+            Universal access for all students & aspirants. Connect freely with any Google or Gmail account — zero restrictions.
           </p>
         </div>
 
@@ -251,7 +251,7 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
 
         <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-          <span>Works on all domains with encrypted session tokens</span>
+          <span>Unrestricted access on all domains • Instant cloud sync</span>
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { Question, MockTest, StudyMaterial, SubjectId, StudentDoubtItem } from '../types';
 import { NotFoundPage } from './NotFoundPage';
+import { gmailService } from '../services/gmailService';
 import { 
   ShieldCheck, 
   ShieldAlert,
@@ -40,7 +41,10 @@ import {
   Sparkles,
   Copy,
   ExternalLink,
-  CheckCircle2
+  CheckCircle2,
+  Mail,
+  Send,
+  Inbox
 } from 'lucide-react';
 
 export const AdminPage: React.FC = () => {
@@ -91,8 +95,33 @@ export const AdminPage: React.FC = () => {
   const [questionSubjectFilter, setQuestionSubjectFilter] = useState('all');
   const [assetSearch, setAssetSearch] = useState('');
 
+  // Gmail Integration State
+  const [isGmailConnected, setIsGmailConnected] = useState(gmailService.isGmailConnected());
+  const [gmailUserEmail, setGmailUserEmail] = useState<string | null>(gmailService.getConnectedEmail());
+  const [isConnectingGmail, setIsConnectingGmail] = useState(false);
+  const [autoSendWelcomeEmail, setAutoSendWelcomeEmail] = useState(true);
+  const [autoSendDeleteEmail, setAutoSendDeleteEmail] = useState(true);
+
+  // Email Composer Modal State
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [emailStudentName, setEmailStudentName] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // Reset All Students State
+  const [showResetStudentsModal, setShowResetStudentsModal] = useState(false);
+  const [isResettingStudents, setIsResettingStudents] = useState(false);
+
+  // Delete Student Confirmation Modal State
+  const [studentToDelete, setStudentToDelete] = useState<any | null>(null);
+  const [deleteNotifyEmail, setDeleteNotifyEmail] = useState(true);
+  const [isDeletingStudent, setIsDeletingStudent] = useState(false);
+
   // Modals
   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
+  const [createSendWelcomeEmail, setCreateSendWelcomeEmail] = useState(true);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [selectedStudentForPassword, setSelectedStudentForPassword] = useState<any>(null);
   const [newStudentPassword, setNewStudentPassword] = useState('');
@@ -295,6 +324,90 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  // Gmail Integration Handlers
+  const handleConnectGmail = async () => {
+    setIsConnectingGmail(true);
+    try {
+      const res = await gmailService.connectGmail();
+      if (res.success) {
+        setIsGmailConnected(true);
+        setGmailUserEmail(res.email || gmailService.getConnectedEmail());
+        showToast({
+          type: 'success',
+          title: 'Gmail Connected',
+          message: `Connected successfully as ${res.email || 'Admin'}. Confirmation emails will be sent via Gmail.`
+        });
+      } else {
+        showToast({
+          type: 'error',
+          title: 'Gmail Connection Failed',
+          message: res.error || 'Could not connect Gmail.'
+        });
+      }
+    } catch (err: any) {
+      showToast({ type: 'error', message: err.message || 'Gmail connection failed.' });
+    } finally {
+      setIsConnectingGmail(false);
+    }
+  };
+
+  const handleDisconnectGmail = () => {
+    gmailService.disconnectGmail();
+    setIsGmailConnected(false);
+    setGmailUserEmail(null);
+    showToast({
+      type: 'info',
+      title: 'Gmail Disconnected',
+      message: 'Gmail account disconnected from admin panel.'
+    });
+  };
+
+  const handleOpenEmailModal = (student: any) => {
+    setEmailRecipient(student.email);
+    setEmailStudentName(student.name);
+    setEmailSubject(`SSC CGL Preparation Portal - Academic Update for ${student.name}`);
+    setEmailBody(`Dear ${student.name},\n\nWe are sharing an important update regarding your SSC CGL preparation schedule...\n\nBest regards,\nSSC CGL Admin Team`);
+    setShowEmailModal(true);
+  };
+
+  const handleSendCustomEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailRecipient || !emailSubject || !emailBody) {
+      showToast({ type: 'warning', message: 'Recipient, subject, and body are required.' });
+      return;
+    }
+    setIsSendingEmail(true);
+    try {
+      const res = await gmailService.sendEmail({
+        to: emailRecipient,
+        subject: emailSubject,
+        body: emailBody
+      });
+      if (res.success) {
+        showToast({
+          type: 'success',
+          title: 'Email Sent via Gmail',
+          message: `Email successfully sent to ${emailRecipient}.`
+        });
+        setShowEmailModal(false);
+        setEmailRecipient('');
+        setEmailStudentName('');
+        setEmailSubject('');
+        setEmailBody('');
+      } else {
+        showToast({
+          type: 'error',
+          title: 'Failed to Send Email',
+          message: res.error || 'Could not deliver email.'
+        });
+      }
+    } catch (err: any) {
+      showToast({ type: 'error', message: err.message || 'Failed to send email.' });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   // Student Actions
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,6 +430,25 @@ export const AdminPage: React.FC = () => {
           title: 'Student Created',
           message: `Account created for ${newStudentName}.`
         });
+
+        // Send confirmation email via Gmail if enabled
+        if (createSendWelcomeEmail && autoSendWelcomeEmail) {
+          gmailService.sendStudentWelcomeEmail({
+            name: newStudentName.trim(),
+            email: newStudentEmail.trim(),
+            initialPassword: newStudentInitialPass,
+            targetExamYear: newStudentYear
+          }).then((mailRes) => {
+            if (mailRes.success) {
+              showToast({
+                type: 'info',
+                title: 'Confirmation Email Dispatched',
+                message: `Welcome email sent to ${newStudentEmail.trim()} via Gmail.`
+              });
+            }
+          }).catch(() => {});
+        }
+
         setShowCreateStudentModal(false);
         setNewStudentName('');
         setNewStudentEmail('');
@@ -350,27 +482,69 @@ export const AdminPage: React.FC = () => {
     }
   };
 
-  const handleDeleteStudent = async (student: any) => {
+  const handleDeleteStudent = (student: any) => {
     if (student.role === 'admin') {
       showToast({ type: 'warning', message: 'Cannot delete master admin account.' });
       return;
     }
-    if (!confirm(`Are you sure you want to permanently delete student account: ${student.name} (${student.email})?`)) {
-      return;
-    }
+    setStudentToDelete(student);
+  };
 
+  const handleConfirmDeleteStudent = async () => {
+    if (!studentToDelete) return;
+    setIsDeletingStudent(true);
     try {
-      const res = await api.adminDeleteUser(student.id);
+      const res = await api.adminDeleteUser(studentToDelete.id);
       if (res.success) {
         showToast({
           type: 'info',
           title: 'Account Deleted',
-          message: `Account for ${student.name} has been removed.`
+          message: `Account for ${studentToDelete.name} has been removed.`
         });
-        setStudentsList(prev => prev.filter(s => s.id !== student.id));
+
+        if (deleteNotifyEmail && autoSendDeleteEmail) {
+          gmailService.sendStudentDeletedEmail({
+            name: studentToDelete.name,
+            email: studentToDelete.email
+          }).then((mailRes) => {
+            if (mailRes.success) {
+              showToast({
+                type: 'info',
+                title: 'Closure Notice Sent',
+                message: `Notification email sent to ${studentToDelete.email} via Gmail.`
+              });
+            }
+          }).catch(() => {});
+        }
+
+        setStudentsList(prev => prev.filter(s => s.id !== studentToDelete.id));
+        setStudentToDelete(null);
       }
     } catch (err: any) {
       showToast({ type: 'error', message: err.message || 'Failed to delete student.' });
+    } finally {
+      setIsDeletingStudent(false);
+    }
+  };
+
+  const handleConfirmResetStudents = async () => {
+    setIsResettingStudents(true);
+    try {
+      const res = await api.adminResetStudents();
+      if (res.success) {
+        showToast({
+          type: 'success',
+          title: 'Database Reset Complete',
+          message: 'All student accounts removed. You are now starting fresh from 0 students.'
+        });
+        setShowResetStudentsModal(false);
+        const updated = await api.adminGetStudents();
+        setStudentsList(updated);
+      }
+    } catch (err: any) {
+      showToast({ type: 'error', message: err.message || 'Failed to reset student database.' });
+    } finally {
+      setIsResettingStudents(false);
     }
   };
 
@@ -865,9 +1039,85 @@ export const AdminPage: React.FC = () => {
       {/* ========================================================= */}
       {activeTab === 'students' && (
         <div className="space-y-4">
+
+          {/* Gmail API Integration & Status Card */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 text-white border border-blue-800/40 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-white flex items-center gap-2">
+                    <span>Gmail API Integration & Notification Dispatcher</span>
+                    {isGmailConnected ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Active: {gmailUserEmail || 'Connected'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        Standby (Server Proxy Active)
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    Sends automatic confirmation emails when creating new student accounts and closure notices when deleting students.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+              {/* Toggles */}
+              <div className="flex items-center gap-3 text-[11px] text-slate-300 bg-slate-800/60 px-3 py-1.5 rounded-xl border border-slate-700/60">
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoSendWelcomeEmail}
+                    onChange={(e) => setAutoSendWelcomeEmail(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-blue-600"
+                  />
+                  <span>Send on Create</span>
+                </label>
+                <span className="text-slate-600">•</span>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoSendDeleteEmail}
+                    onChange={(e) => setAutoSendDeleteEmail(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-blue-600"
+                  />
+                  <span>Send on Delete</span>
+                </label>
+              </div>
+
+              {/* Connect / Disconnect button */}
+              {isGmailConnected ? (
+                <button
+                  type="button"
+                  onClick={handleDisconnectGmail}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Disconnect Gmail
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConnectGmail}
+                  disabled={isConnectingGmail}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>{isConnectingGmail ? 'Connecting...' : 'Connect Gmail Account'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Controls Bar */}
-          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="relative w-full sm:w-80">
+          <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="relative w-full md:w-80">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -878,21 +1128,39 @@ export const AdminPage: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Filter className="w-4 h-4 text-slate-400" />
-              <select
-                value={studentYearFilter}
-                onChange={(e) => setStudentYearFilter(e.target.value)}
-                className="px-3 py-2 text-xs rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-slate-700 focus:outline-none focus:border-blue-600"
-              >
-                <option value="all">All Exam Cycles</option>
-                <option value="2026-2027">SSC CGL 2026-2027</option>
-                <option value="2027-2028">SSC CGL 2027-2028</option>
-              </select>
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-slate-400" />
+                <select
+                  value={studentYearFilter}
+                  onChange={(e) => setStudentYearFilter(e.target.value)}
+                  className="px-3 py-2 text-xs rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-slate-700 focus:outline-none focus:border-blue-600"
+                >
+                  <option value="all">All Exam Cycles</option>
+                  <option value="2026-2027">SSC CGL 2026-2027</option>
+                  <option value="2027-2028">SSC CGL 2027-2028</option>
+                </select>
+              </div>
 
-              <span className="text-xs text-slate-500 font-medium whitespace-nowrap ml-2">
-                Showing {filteredStudents.length} of {studentsList.length} aspirants
-              </span>
+              {/* Reset All Students (Start Fresh) Button */}
+              <button
+                type="button"
+                onClick={() => setShowResetStudentsModal(true)}
+                className="px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                title="Purge all student accounts to start fresh"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>Remove All Students (Start Fresh)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowCreateStudentModal(true)}
+                className="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Create Student</span>
+              </button>
             </div>
           </div>
 
@@ -914,8 +1182,16 @@ export const AdminPage: React.FC = () => {
                 <tbody className="divide-y divide-[#E2E8F0]">
                   {filteredStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-400">
-                        No student accounts matched your query.
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <div className="space-y-2 max-w-sm mx-auto">
+                          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                            <Users className="w-5 h-5" />
+                          </div>
+                          <div className="font-bold text-slate-800 text-xs">No Student Accounts Found</div>
+                          <p className="text-[11px] text-slate-500">
+                            The student database is clean. Click &quot;Create Student&quot; above to enroll aspirants or students can sign in directly with Google.
+                          </p>
+                        </div>
                       </td>
                     </tr>
                   ) : (
@@ -975,7 +1251,20 @@ export const AdminPage: React.FC = () => {
 
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            {/* Send Direct Email Button */}
+                            {st.role !== 'admin' && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEmailModal(st)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                                title="Send Email via Gmail"
+                              >
+                                <Mail className="w-4 h-4" />
+                              </button>
+                            )}
+
                             <button
+                              type="button"
                               onClick={() => {
                                 setSelectedStudentForPassword(st);
                                 setShowChangePasswordModal(true);
@@ -988,6 +1277,7 @@ export const AdminPage: React.FC = () => {
 
                             {st.role !== 'admin' && (
                               <button
+                                type="button"
                                 onClick={() => handleDeleteStudent(st)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                                 title="Delete Student"
@@ -1738,6 +2028,27 @@ export const AdminPage: React.FC = () => {
                 </select>
               </div>
 
+              {/* Confirmation Email Checkbox */}
+              <div>
+                <label className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={createSendWelcomeEmail}
+                    onChange={(e) => setCreateSendWelcomeEmail(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 mt-0.5"
+                  />
+                  <div>
+                    <span className="font-bold text-blue-950 flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Send Welcome & Confirmation Email via Gmail</span>
+                    </span>
+                    <p className="text-[11px] text-blue-800/80 mt-0.5">
+                      Dispatches login credentials and portal access link directly to the student's inbox.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -1750,7 +2061,236 @@ export const AdminPage: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer"
                 >
-                  Create Student
+                  Create Student & Send Mail
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: DELETE STUDENT CONFIRMATION (MANDATORY WORKSPACE)  */}
+      {/* ========================================================= */}
+      {studentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-rose-200 p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-rose-100">
+              <h3 className="font-bold text-base text-rose-700 flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+                <span>Confirm Student Account Deletion</span>
+              </h3>
+              <button
+                onClick={() => setStudentToDelete(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-700">
+                Are you sure you want to permanently delete the following aspirant account? This action cannot be undone.
+              </p>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <div className="font-bold text-slate-900 text-sm">{studentToDelete.name}</div>
+                <div className="text-slate-500 font-mono text-xs">{studentToDelete.email}</div>
+                <div className="text-[11px] text-slate-400">Exam Cycle: {studentToDelete.targetExamYear || '2026-2027'}</div>
+              </div>
+
+              {/* Closure Notice Email Checkbox */}
+              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50/60 border border-rose-200/80 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={deleteNotifyEmail}
+                  onChange={(e) => setDeleteNotifyEmail(e.target.checked)}
+                  className="w-4 h-4 rounded text-rose-600 mt-0.5"
+                />
+                <div>
+                  <span className="font-bold text-rose-950 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Send Account Closure Notice via Gmail</span>
+                  </span>
+                  <p className="text-[11px] text-rose-800/80 mt-0.5">
+                    Sends an official account closure confirmation notice to the student's email.
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setStudentToDelete(null)}
+                disabled={isDeletingStudent}
+                className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteStudent}
+                disabled={isDeletingStudent}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-60"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeletingStudent ? 'Deleting & Notifying...' : 'Confirm Delete & Send Notice'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: RESET ALL STUDENTS (START FRESH)                   */}
+      {/* ========================================================= */}
+      {showResetStudentsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-rose-200 p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-rose-100">
+              <h3 className="font-bold text-base text-rose-700 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+                <span>Remove All Students & Start from New</span>
+              </h3>
+              <button
+                onClick={() => setShowResetStudentsModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-600 leading-relaxed">
+              <p className="font-semibold text-slate-900">
+                Are you sure you want to remove ALL student accounts and start completely fresh?
+              </p>
+              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-900 space-y-1.5">
+                <div className="font-bold flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-amber-600" />
+                  <span>Fresh Start Guarantee:</span>
+                </div>
+                <ul className="list-disc list-inside space-y-0.5 text-[11px] text-amber-800">
+                  <li>Purges all mock test attempts, student doubt records, and student accounts.</li>
+                  <li>Resets the student directory to exactly 0 students.</li>
+                  <li>Your Master Admin account and password remain completely secure.</li>
+                  <li>You can immediately start enrolling real students or have students sign in with Google.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowResetStudentsModal(false)}
+                disabled={isResettingStudents}
+                className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmResetStudents}
+                disabled={isResettingStudents}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-60"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isResettingStudents ? 'Clearing Database...' : 'Confirm Purge & Start Fresh'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: SEND CUSTOM EMAIL VIA GMAIL                       */}
+      {/* ========================================================= */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-blue-200 p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                <Mail className="w-5 h-5 text-blue-600" />
+                <span>Dispatch Email via Gmail</span>
+              </h3>
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendCustomEmail} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Recipient Name</label>
+                  <input
+                    type="text"
+                    value={emailStudentName}
+                    onChange={(e) => setEmailStudentName(e.target.value)}
+                    placeholder="Student Name"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Recipient Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={emailRecipient}
+                    onChange={(e) => setEmailRecipient(e.target.value)}
+                    placeholder="student@example.com"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Subject Line</label>
+                <input
+                  type="text"
+                  required
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder="Subject of notification..."
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Message Body</label>
+                <textarea
+                  rows={6}
+                  required
+                  value={emailBody}
+                  onChange={(e) => setEmailBody(e.target.value)}
+                  placeholder="Write your email message to the student..."
+                  className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-600 font-mono text-xs"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200/60 text-[11px] text-blue-900 flex items-center justify-between">
+                <span>Sender Account: <strong>{gmailUserEmail || 'Admin Dispatcher'}</strong></span>
+                <span className="font-semibold text-blue-600">Gmail API</span>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEmailModal(false)}
+                  disabled={isSendingEmail}
+                  className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingEmail}
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-60"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>{isSendingEmail ? 'Dispatching Email...' : 'Send Email via Gmail'}</span>
                 </button>
               </div>
             </form>

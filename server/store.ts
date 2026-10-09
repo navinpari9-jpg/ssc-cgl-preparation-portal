@@ -597,24 +597,41 @@ class Store {
     return { success: true, message: `User ${target.name} (${target.email}) deleted successfully.` };
   }
 
+  adminResetStudents() {
+    const prevCount = this.accounts.filter(a => a.role === 'student').length;
+    // Wipe all non-admin accounts and student data
+    this.accounts = this.accounts.filter(a => a.role === 'admin');
+    for (const [token, session] of this.sessions.entries()) {
+      if (session.role !== 'admin') {
+        this.sessions.delete(token);
+      }
+    }
+    this.testAttempts = [];
+    this.studentDoubts = [];
+    return {
+      success: true,
+      message: `Reset complete. Removed ${prevCount} student accounts and associated records. You are now starting fresh from 0 students.`
+    };
+  }
+
   getAdminAnalyticsSummary() {
     const totalStudents = this.accounts.filter(a => a.role === 'student').length;
     const attempts = this.testAttempts;
     const avgAccuracy = attempts.length > 0 
       ? Math.round(attempts.reduce((sum, a) => sum + (a.accuracyPercentage || 0), 0) / attempts.length)
-      : 82;
+      : (totalStudents > 0 ? 82 : 0);
     const avgScore = attempts.length > 0
       ? Math.round(attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length)
-      : 145;
+      : (totalStudents > 0 ? 145 : 0);
 
     return {
-      totalRegisteredStudents: Math.max(totalStudents, 36),
-      totalMockAttempts: Math.max(attempts.length, 124),
+      totalRegisteredStudents: totalStudents,
+      totalMockAttempts: attempts.length,
       averagePlatformScore: avgScore,
       averageAccuracy: avgAccuracy,
       totalQuestionsInBank: this.questions.length,
       totalStudyMaterials: this.studyMaterials.length,
-      activeSessionsCount: Math.max(this.sessions.size, 1),
+      activeSessionsCount: this.sessions.size,
       recentLogins: this.accounts.slice(0, 10).map(a => ({
         name: a.name,
         email: a.email,

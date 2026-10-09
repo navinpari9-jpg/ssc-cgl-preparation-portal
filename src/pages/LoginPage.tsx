@@ -202,7 +202,7 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            {/* Google Account Sign In Button (Every Domain) */}
+            {/* Google Account Sign In Button (Every Domain - Unrestricted) */}
             <div className="mb-5">
               <button
                 type="button"
@@ -216,10 +216,10 @@ export const LoginPage: React.FC = () => {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                 </svg>
-                <span>{isFirebaseLoading ? 'Connecting to Google...' : 'Continue with Google Account'}</span>
+                <span>{isFirebaseLoading ? 'Connecting to Google...' : 'Continue with Any Google Account'}</span>
               </button>
               <div className="text-[10px] text-center text-slate-400 mt-1">
-                Works on all domains • Synchronizes test attempts & saved bookmarks
+                Open to all users • No domain restriction • Automatic cloud sync
               </div>
 
               <div className="relative my-4">
@@ -327,20 +327,20 @@ export const LoginPage: React.FC = () => {
             <div className="p-3 rounded-xl bg-blue-50 border border-blue-200/60 text-blue-900 text-left flex items-start gap-2.5">
               <UserPlus className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold">First time preparing here?</span>
+                <span className="font-bold">Instant Access with Google</span>
                 <p className="text-[11px] text-blue-800/80 mt-0.5">
-                  You need to register first before logging in. Your target exam schedule, test attempts, and study analytics will be securely linked to your account.
+                  Anyone can sign in with any Google account without prior registration. All CBT tests, progress, and bookmarks are automatically saved to your cloud profile.
                 </p>
               </div>
             </div>
 
             <div className="pt-2 text-slate-600">
-              Don't have an account yet?{' '}
+              Prefer password-based login?{' '}
               <button
                 onClick={() => setActivePage('register')}
                 className="font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
               >
-                Register as New Aspirant →
+                Register with Email →
               </button>
             </div>
           </div>
