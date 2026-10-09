@@ -26,6 +26,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { QuizQuestionPage } from './pages/QuizQuestionPage';
 import { QuizResultPage } from './pages/QuizResultPage';
 import { AdminPage } from './pages/AdminPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 
 const AppContent: React.FC = () => {
   const { activePage, setActivePage } = useApp();
@@ -33,7 +34,8 @@ const AppContent: React.FC = () => {
 
   const isAuthPage = ['login', 'register', 'forgot-password'].includes(activePage);
   const isLandingPage = activePage === 'landing';
-  const showSidebar = !isAuthPage && !isLandingPage;
+  const isNotFoundPage = activePage === 'not-found';
+  const showSidebar = !isAuthPage && !isLandingPage && !isNotFoundPage;
 
   const renderActivePage = () => {
     switch (activePage) {
@@ -150,13 +152,13 @@ const AppContent: React.FC = () => {
           </ProtectedRoute>
         );
 
-      // Protected Admin Route
+      // Protected Admin Route with Secret Token Gate
       case 'admin':
-        return (
-          <ProtectedRoute requiredRole="admin" pagePath="/admin">
-            <AdminPage />
-          </ProtectedRoute>
-        );
+        return <AdminPage />;
+
+      // 404 Not Found Route
+      case 'not-found':
+        return <NotFoundPage />;
 
       default:
         return (

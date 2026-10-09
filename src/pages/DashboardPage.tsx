@@ -24,7 +24,10 @@ import {
   MessageSquare,
   Sparkles,
   BarChart2,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  FileText,
+  Briefcase
 } from 'lucide-react';
 import { TestAttemptResult, DailyStudyPlan, SubjectMetadata } from '../types';
 
@@ -167,37 +170,46 @@ export const DashboardPage: React.FC = () => {
           <div className="max-w-2xl space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold tracking-wide uppercase">
               <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-              SSC CGL 2025 Comprehensive Mission
+              AI Resume Analyzer & Job Recommendation System
             </div>
 
             <div className="space-y-1">
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
-                SSC CGL 2025
+                Welcome back, {displayName}
               </h1>
               <p className="text-xl sm:text-2xl font-semibold text-blue-200">
-                Your Goal, Our Support
+                Optimize Your Resume & Accelerate Your Career
               </p>
             </div>
 
             <p className="text-sm sm:text-base text-slate-300 font-normal leading-relaxed">
-              Prepare smart | Practice more | Crack SSC CGL
+              Upload resumes, analyze real-time ATS compatibility, and match with verified job openings.
             </p>
 
             <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
-                onClick={() => setActivePage('mock-tests')}
+                onClick={() => setActivePage('resume-upload')}
                 className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 transition-all hover:translate-y-[-1px] cursor-pointer flex items-center gap-2 group"
               >
-                <span>Start Your Preparation</span>
+                <Upload className="w-4 h-4" />
+                <span>Upload & Analyze Resume</span>
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
 
               <button
-                onClick={() => setActivePage('daily-planner')}
+                onClick={() => setActivePage('ats-score')}
                 className="px-5 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-sm border border-slate-700 transition-colors cursor-pointer flex items-center gap-2"
               >
-                <Calendar className="w-4 h-4 text-blue-400" />
-                <span>Today's Study Plan</span>
+                <Award className="w-4 h-4 text-emerald-400" />
+                <span>ATS Score (88%)</span>
+              </button>
+
+              <button
+                onClick={() => setActivePage('job-recommendations')}
+                className="px-5 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-sm border border-slate-700 transition-colors cursor-pointer flex items-center gap-2"
+              >
+                <Briefcase className="w-4 h-4 text-blue-400" />
+                <span>View Matched Jobs</span>
               </button>
             </div>
           </div>

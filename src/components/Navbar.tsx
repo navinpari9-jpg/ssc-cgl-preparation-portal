@@ -14,7 +14,8 @@ import {
   CheckCircle2,
   Calendar,
   X,
-  Award
+  Award,
+  Sparkles
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -65,29 +66,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMobileMenu, onOpenAuthModa
       });
       setActivePage('practice');
     }
-  };
-
-  const handleToggleAdmin = async () => {
-    if (!user) return;
-    const newRole = user.role === 'admin' ? 'student' : 'admin';
-    try {
-      const res = await fetch('/api/user/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole })
-      });
-      if (res.ok) {
-        await refreshUser();
-        showToast({
-          type: 'info',
-          title: `Role updated: ${newRole === 'admin' ? 'Admin' : 'Student'}`,
-          message: newRole === 'admin' ? 'Admin console enabled.' : 'Switched to Student mode.'
-        });
-      }
-    } catch {
-      showToast({ type: 'error', message: 'Failed to switch role' });
-    }
-    setShowUserMenu(false);
   };
 
   const displayName = user?.name || currentUser.name;
@@ -156,6 +134,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMobileMenu, onOpenAuthModa
         {/* Right Section: Notifications + User Profile */}
         <div className="flex items-center gap-3">
           
+          {/* Quick AI Doubt Support Button */}
+          <button
+            onClick={() => setActivePage('ai-tutor')}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            title="Open AI Doubt Support Center"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+            <span>AI Doubt Solver</span>
+          </button>
+
           {/* Notifications Dropdown */}
           <div className="relative" ref={notifRef}>
             <button
@@ -327,20 +315,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMobileMenu, onOpenAuthModa
                     >
                       <SettingsIcon className="w-4 h-4 text-slate-400" />
                       <span>Settings & Preferences</span>
-                    </button>
-
-                    {/* Admin role switch */}
-                    <button
-                      onClick={handleToggleAdmin}
-                      className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-amber-600 transition-colors text-left cursor-pointer border-t border-slate-100"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <ShieldCheck className="w-4 h-4 text-amber-500" />
-                        <span>{user?.role === 'admin' ? 'Switch to Student View' : 'Switch to Admin View'}</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
-                        {user?.role === 'admin' ? 'Admin' : 'Student'}
-                      </span>
                     </button>
                   </div>
 

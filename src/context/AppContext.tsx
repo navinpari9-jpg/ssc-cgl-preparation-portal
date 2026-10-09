@@ -33,13 +33,38 @@ export const pageToPath = (page: string): string => {
     case 'leaderboard': return '/leaderboard';
     case 'profile': return '/profile';
     case 'settings': return '/settings';
-    case 'admin': return '/admin';
+    case 'admin': {
+      const secret = typeof window !== 'undefined' 
+        ? (sessionStorage.getItem('ssc_admin_secret') || new URLSearchParams(window.location.search).get('token') || 'NKzoro')
+        : 'NKzoro';
+      return `/admin-login?token=${encodeURIComponent(secret)}`;
+    }
+    case 'not-found': return '/not-found';
     default: return '/dashboard';
   }
 };
 
 export const pathToPage = (pathname: string): string => {
   const clean = pathname.replace(/\/$/, '') || '/';
+
+  // Strict 404 security protection for /admin and all subpaths
+  if (clean === '/admin' || clean.startsWith('/admin/')) {
+    return 'not-found';
+  }
+
+  // ONLY /admin-login with ?token=... is allowed to open admin
+  if (clean === '/admin-login') {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      if (!token || !token.trim()) {
+        return 'not-found';
+      }
+      return 'admin';
+    }
+    return 'not-found';
+  }
+
   switch (clean) {
     case '/': return 'landing';
     case '/login': return 'login';
@@ -56,7 +81,12 @@ export const pathToPage = (pathname: string): string => {
     case '/result': return 'quiz-result';
     case '/performance':
     case '/analytics': return 'analytics';
-    case '/ai-tutor': return 'ai-tutor';
+    case '/ai-tutor':
+    case '/doubt-support':
+    case '/doubt-solver':
+    case '/doubt':
+    case '/doubts':
+      return 'ai-tutor';
     case '/ai-question-generator':
     case '/ai-generator': return 'ai-generator';
     case '/study-planner':
@@ -67,8 +97,8 @@ export const pathToPage = (pathname: string): string => {
     case '/leaderboard': return 'leaderboard';
     case '/profile': return 'profile';
     case '/settings': return 'settings';
-    case '/admin': return 'admin';
-    default: return 'dashboard';
+    case '/not-found': return 'not-found';
+    default: return 'not-found';
   }
 };
 

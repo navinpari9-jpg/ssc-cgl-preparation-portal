@@ -286,3 +286,42 @@ export interface SubjectMetadata {
     importance: 'High' | 'Medium' | 'Low';
   }[];
 }
+
+export type DoubtType = 'problem_solving' | 'conceptual' | 'shortcut_trick' | 'error_analysis' | 'formula_clarity';
+
+export interface SimilarPracticeQuestion {
+  question: string;
+  options: [string, string, string, string];
+  correctAnswer: string;
+  explanation: string;
+}
+
+export interface DoubtSolution {
+  answer: string;
+  stepByStep: string[];
+  formula?: string;
+  shortcut?: string;
+  examTip?: string;
+  commonMistake?: string;
+  difficulty?: DifficultyLevel;
+  timeTargetSeconds?: number;
+  relatedTopics: string[];
+  alternativeMethod?: string;
+  simpleExplanation?: string;
+  similarQuestion?: SimilarPracticeQuestion;
+}
+
+export interface StudentDoubtItem {
+  id: string;
+  userId?: string;
+  studentName?: string;
+  question: string;
+  subject: string;
+  topic: string;
+  doubtType: DoubtType;
+  studentAttempt?: string;
+  imageUrl?: string;
+  solution: DoubtSolution;
+  status: 'resolved' | 'needs_revision' | 'bookmarked';
+  createdAt: string;
+}

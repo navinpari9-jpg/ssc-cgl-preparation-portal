@@ -15,7 +15,9 @@ import {
   HelpCircle,
   Sparkles,
   ArrowRight,
-  Filter
+  Filter,
+  MessageSquare,
+  Bot
 } from 'lucide-react';
 
 interface QuizResultPageProps {
@@ -111,6 +113,30 @@ export const QuizResultPage: React.FC<QuizResultPageProps> = ({ result: propResu
     if (activeReviewFilter === 'unattempted') return item.selectedOption === null;
     return true;
   });
+
+  const handleAskDoubt = (q: Question, item: any) => {
+    const subjectName = (
+      q.subjectId === 'quantitative-aptitude' ? 'Quantitative Aptitude' :
+      q.subjectId === 'reasoning' ? 'Reasoning' :
+      q.subjectId === 'english' ? 'English' : 'General Awareness'
+    );
+    const selectedText = item.selectedOption !== null && item.selectedOption !== undefined
+      ? `My Answer: Option ${['A','B','C','D'][item.selectedOption]} (${q.options[item.selectedOption]})`
+      : 'I skipped this question.';
+
+    const doubtPayload = {
+      question: `I have a doubt on this SSC CGL ${subjectName} question from Mock Test:\n\n"${q.question}"\n\nOptions:\n${q.options.map((opt, i) => `${['A','B','C','D'][i]}. ${opt}`).join('\n')}\n\nCorrect Answer: Option ${['A','B','C','D'][q.correctAnswer]} (${q.options[q.correctAnswer]}).\n${selectedText}\n\nPlease explain step by step why the correct answer is right, where students typically make mistakes, and what is the best speed shortcut trick.`,
+      subject: subjectName,
+      topic: q.topic
+    };
+
+    try {
+      sessionStorage.setItem('pending_doubt_question', JSON.stringify(doubtPayload));
+    } catch {
+      // ignore
+    }
+    setActivePage('ai-tutor');
+  };
 
   return (
     <div className="space-y-6 py-2">
@@ -462,6 +488,17 @@ export const QuizResultPage: React.FC<QuizResultPageProps> = ({ result: propResu
                           💡 <span className="font-bold">Shortcut Trick:</span> {q.shortcutTrick}
                         </div>
                       )}
+
+                      <div className="mt-3 pt-3 border-t border-[#E2E8F0] flex items-center justify-between">
+                        <span className="text-[11px] text-[#64748B]">Need deeper explanation or shortcut trick?</span>
+                        <button
+                          onClick={() => handleAskDoubt(q, item)}
+                          className="px-3 py-1.5 rounded-md bg-[#EFF6FF] hover:bg-blue-100 text-[#2563EB] border border-[#BFDBFE] text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                        >
+                          <Bot className="w-3.5 h-3.5" />
+                          <span>Ask AI Doubt Support</span>
+                        </button>
+                      </div>
                     </div>
 
                   </div>

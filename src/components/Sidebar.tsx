@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   LayoutDashboard, 
   CalendarDays, 
@@ -275,28 +276,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
           </div>
         </div>
 
-        {/* Footer Area: User / Admin / Collapse Button */}
+        {/* Footer Area: Collapse Button */}
         <div className="p-3 border-t border-slate-800 bg-[#0B1120] shrink-0 space-y-2">
-          {/* Admin badge link if applicable */}
-          {user?.role === 'admin' && !isSidebarCollapsed && (
-            <button
-              onClick={() => handleNav('admin')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                activePage === 'admin'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4" />
-                <span>Admin Console</span>
-              </div>
-              <span className="text-[10px] uppercase font-bold tracking-wider">
-                Staff
-              </span>
-            </button>
-          )}
-
           {/* Desktop Collapse / Expand Toggle */}
           <div className="hidden md:flex items-center justify-between pt-1">
             {!isSidebarCollapsed && (

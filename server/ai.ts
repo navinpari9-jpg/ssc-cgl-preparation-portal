@@ -2,8 +2,8 @@ import { GoogleGenAI, Type } from '@google/genai';
 
 // Prioritized list of compatible, active models from @google/genai guidelines
 const CANDIDATE_MODELS = [
-  'gemini-3.1-flash-lite',
   'gemini-3.8-flash',
+  'gemini-3.1-flash-lite',
   'gemini-flash-latest'
 ];
 
@@ -65,7 +65,7 @@ function extractAndParseJson<T>(rawText: string): T | null {
   return null;
 }
 
-// Resilient model caller that tries candidates if capacity or model issues occur
+// Resilient model caller that tries candidates with retries if capacity or model spikes occur
 async function callGeminiWithFallback(
   callFn: (modelName: string, ai: GoogleGenAI) => Promise<any>
 ): Promise<any> {
@@ -78,19 +78,30 @@ async function callGeminiWithFallback(
 
   let lastError: any = null;
   for (const model of CANDIDATE_MODELS) {
-    try {
-      return await callFn(model, ai);
-    } catch (err: any) {
-      lastError = err;
-      const status = err.status || (err.error && err.error.code);
-      console.warn(`Gemini model ${model} failed with status ${status}:`, err.message || err);
-      // If 503 (high demand) or 404 (model not found), continue to next candidate
-      if (status === 503 || status === 404 || status === 429) {
-        continue;
-      }
-      // If it's a fatal validation or auth error, don't keep cycling uselessly
-      if (status === 400 || status === 401 || status === 403) {
-        throw err;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await callFn(model, ai);
+      } catch (err: any) {
+        lastError = err;
+        const status = err.status || (err.error && err.error.code);
+        const errMsg = String(err.message || '');
+        console.warn(`Gemini model ${model} (attempt ${attempt + 1}) failed: status=${status}, msg=${errMsg}`);
+
+        // If auth error (invalid key or forbidden), throw immediately
+        if (status === 401 || status === 403 || errMsg.includes('API_KEY_INVALID') || errMsg.includes('401')) {
+          throw err;
+        }
+
+        // On 503 (high demand) or 429 (rate limit), pause briefly on first attempt before retrying
+        if (status === 503 || status === 429 || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+          if (attempt === 0) {
+            await new Promise(r => setTimeout(r, 400));
+            continue;
+          }
+        }
+
+        // Move to next candidate model
+        break;
       }
     }
   }
@@ -133,7 +144,7 @@ export async function testAIConnection(): Promise<{ success: boolean; message: s
 }
 
 // -------------------------------------------------------------
-// 2. AI Tutor
+// 2. AI Tutor / Doubt Solver
 // -------------------------------------------------------------
 export interface TutorRequestParams {
   question: string;
@@ -167,80 +178,110 @@ export async function askAITutor(params: TutorRequestParams): Promise<TutorRespo
   const subject = params.subject || 'All Subjects';
   const topic = params.topic || 'General';
 
-  const systemInstruction = `You are a senior SSC CGL mentor and exam expert.
-Always respond in clear, formal, accurate English. All text, formulas, steps, tips, and shortcuts MUST be in English only.
-Specializations:
-- Quantitative Aptitude (Arithmetic, Algebra, Geometry, Mensuration, Trigonometry, Number System)
-- General Intelligence & Reasoning (Syllogisms, Blood Relations, Coding-Decoding, Series, Non-Verbal)
-- English Language (Grammar rules, Vocabulary roots, Sentence Improvement, Error Detection)
-- General Awareness (Indian Polity, Modern History, Geography, Economy, Science, Static GK)
-
-Requirements for each answer:
-1. Provide a comprehensive, accurate step-by-step solution.
-2. State the canonical formula or rule used.
-3. Provide an exam-tested "Speed Shortcut" or elimination technique (ideal for 40-second CBT targets).
-4. Provide a practical "Exam Tip" highlighting common trap distractors or units pitfalls.
-5. Provide 2 to 4 related SSC CGL topics.
-6. Rate the difficulty as Easy, Medium, or Hard.`;
+  const systemInstruction = `You are a senior SSC CGL mentor and expert doubt solver for the Staff Selection Commission Combined Graduate Level Examination.
+Always respond in clear, comprehensive, pedagogical English.
+Requirements for answering every doubt:
+1. Provide a rigorous, step-by-step mathematical or conceptual breakdown showing each step clearly.
+2. State the key formula, canonical theorem, or grammatical rule utilized.
+3. Provide an exam-tested speed shortcut or topper elimination trick (essential for the 60-minute / 100-question CBT format).
+4. Provide a high-yield exam tip highlighting common pitfalls, traps, or units mistakes.
+5. Provide 2 to 4 related SSC CGL syllabus topics.
+6. Rate difficulty as Easy, Medium, or Hard.`;
 
   try {
     const response = await callGeminiWithFallback(async (model, ai) => {
-      return await ai.models.generateContent({
-        model,
-        contents: `Subject: ${subject}
+      try {
+        return await ai.models.generateContent({
+          model,
+          contents: `Subject: ${subject}
 Topic: ${topic}
-Student Question: "${query}"
+Student Doubt Question:
+${query}
 
 Provide the step-by-step solution and analysis following the required JSON schema.`,
-        config: {
-          systemInstruction,
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              answer: {
-                type: Type.STRING,
-                description: 'Detailed step-by-step solution and final answer in clear English'
+          config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                answer: {
+                  type: Type.STRING,
+                  description: 'Detailed step-by-step solution and final answer in clear English'
+                },
+                formula: {
+                  type: Type.STRING,
+                  description: 'The primary mathematical formula or grammatical rule utilized'
+                },
+                shortcut: {
+                  type: Type.STRING,
+                  description: 'Topper shortcut, alligation method, option elimination, or speed trick'
+                },
+                examTip: {
+                  type: Type.STRING,
+                  description: 'Crucial exam tip or common pitfall to avoid in SSC CGL CBT'
+                },
+                difficulty: {
+                  type: Type.STRING,
+                  description: 'Easy, Medium, or Hard'
+                },
+                relatedTopics: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: 'Related syllabus topics'
+                }
               },
-              formula: {
-                type: Type.STRING,
-                description: 'The primary mathematical formula or grammatical rule utilized'
-              },
-              shortcut: {
-                type: Type.STRING,
-                description: 'Topper shortcut, alligation method, option elimination, or speed trick'
-              },
-              examTip: {
-                type: Type.STRING,
-                description: 'Crucial exam tip or common pitfall to avoid in SSC CGL CBT'
-              },
-              difficulty: {
-                type: Type.STRING,
-                description: 'Easy, Medium, or Hard'
-              },
-              relatedTopics: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: 'Related syllabus topics'
-              }
-            },
-            required: ['answer', 'formula', 'shortcut', 'examTip', 'relatedTopics']
+              required: ['answer', 'formula', 'shortcut', 'examTip', 'relatedTopics']
+            }
           }
-        }
-      });
+        });
+      } catch (schemaErr: any) {
+        console.warn(`Structured schema failed on ${model}, falling back to unconstrained JSON prompt:`, schemaErr.message);
+        return await ai.models.generateContent({
+          model,
+          contents: `Subject: ${subject}
+Topic: ${topic}
+Student Doubt Question:
+${query}
+
+Return your answer strictly as a valid JSON object with the following keys:
+{
+  "answer": "step by step explanation and final answer",
+  "formula": "formula or rule used",
+  "shortcut": "speed trick or shortcut method",
+  "examTip": "exam tip or common mistake",
+  "difficulty": "Easy" or "Medium" or "Hard",
+  "relatedTopics": ["topic 1", "topic 2"]
+}`
+        });
+      }
     });
 
-    const parsed = extractAndParseJson<TutorResponseData>(response.text);
+    let rawText = '';
+    try {
+      rawText = response.text || '';
+    } catch {
+      rawText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    }
+
+    const parsed = extractAndParseJson<TutorResponseData>(rawText);
     if (!parsed || !parsed.answer) {
-      // If structured parsing was imperfect, use raw text safely
-      const rawText = response.text || '';
+      if (rawText.trim()) {
+        return {
+          success: true,
+          answer: rawText.trim(),
+          formula: 'Standard identity applicable to ' + (topic !== 'General' ? topic : subject),
+          shortcut: 'Check option divisibility and units digit to save time.',
+          examTip: 'Double check units consistency before calculating final values.',
+          difficulty: 'Medium',
+          relatedTopics: [topic !== 'General' ? topic : 'Core Syllabus', subject !== 'All Subjects' ? subject : 'General Intelligence']
+        };
+      }
       return {
-        success: true,
-        answer: rawText,
-        formula: 'Standard identity applicable to ' + topic,
-        shortcut: 'Check option divisibility and units digit to save time.',
-        examTip: 'Double check units consistency before calculating final values.',
-        relatedTopics: [topic, subject]
+        success: false,
+        answer: '',
+        relatedTopics: [],
+        error: 'AI service temporarily unavailable. Please retry shortly.'
       };
     }
 
@@ -251,7 +292,7 @@ Provide the step-by-step solution and analysis following the required JSON schem
       shortcut: parsed.shortcut || 'Verify by testing options directly.',
       examTip: parsed.examTip || 'Eliminate extreme options immediately.',
       difficulty: (parsed.difficulty as any) || 'Medium',
-      relatedTopics: Array.isArray(parsed.relatedTopics) ? parsed.relatedTopics : [topic]
+      relatedTopics: Array.isArray(parsed.relatedTopics) && parsed.relatedTopics.length > 0 ? parsed.relatedTopics : [topic, subject]
     };
   } catch (error: any) {
     console.error('askAITutor Error:', error);
@@ -266,6 +307,356 @@ Provide the step-by-step solution and analysis following the required JSON schem
     };
   }
 }
+
+// -------------------------------------------------------------
+// 2B. Dedicated Student Doubt Solver & Follow-up (Gemini 3.8 Flash)
+// -------------------------------------------------------------
+export interface StudentDoubtRequest {
+  question: string;
+  subject?: string;
+  topic?: string;
+  doubtType?: 'problem_solving' | 'conceptual' | 'shortcut_trick' | 'error_analysis' | 'formula_clarity';
+  studentAttempt?: string;
+  imageData?: string;
+  imageMimeType?: string;
+}
+
+export interface StudentDoubtResponse {
+  success: boolean;
+  solution?: {
+    answer: string;
+    stepByStep: string[];
+    formula?: string;
+    shortcut?: string;
+    examTip?: string;
+    commonMistake?: string;
+    difficulty?: 'Easy' | 'Medium' | 'Hard';
+    timeTargetSeconds?: number;
+    relatedTopics: string[];
+    alternativeMethod?: string;
+    simpleExplanation?: string;
+    similarQuestion?: {
+      question: string;
+      options: [string, string, string, string];
+      correctAnswer: string;
+      explanation: string;
+    };
+  };
+  error?: string;
+}
+
+export async function solveStudentDoubt(params: StudentDoubtRequest): Promise<StudentDoubtResponse> {
+  const query = (params.question || '').trim();
+  const hasImage = !!(params.imageData && params.imageData.trim());
+
+  if (!query && !hasImage) {
+    return {
+      success: false,
+      error: 'Please enter your doubt question or upload an image of the problem.'
+    };
+  }
+
+  const subject = params.subject || 'Quantitative Aptitude';
+  const topic = params.topic || 'General Syllabus';
+  const doubtType = params.doubtType || 'problem_solving';
+  const studentAttempt = (params.studentAttempt || '').trim();
+
+  const promptText = `You are a master SSC CGL educator and student doubt solver.
+A student has asked for help with their doubt:
+Subject: ${subject}
+Topic: ${topic}
+Doubt Category: ${doubtType}
+${studentAttempt ? `Student's Attempt / Confusion: "${studentAttempt}"` : ''}
+Student Question:
+${query || (hasImage ? 'Please analyze the uploaded image of the problem and provide a complete step-by-step resolution.' : '')}
+
+Deliver an expert pedagogical explanation tailored for competitive exam aspirants.
+Requirements:
+1. "answer": Concise direct answer or solution verdict.
+2. "stepByStep": Array of 3-5 sequential, numbered steps breaking down the resolution.
+3. "formula": The key mathematical identity, theorem, or grammatical rule.
+4. "shortcut": The topper speed trick / 30-second shortcut (ratio method, option substitution, digital root, etc.).
+5. "examTip": High-yield tip for CBT exams.
+6. "commonMistake": Explain why students get confused or why the student's attempt was wrong.
+7. "difficulty": "Easy", "Medium", or "Hard".
+8. "timeTargetSeconds": Recommended ideal solving time in seconds (e.g. 35, 45, 60).
+9. "relatedTopics": Array of 2-4 related syllabus topics.
+10. "alternativeMethod": An alternative solving approach (e.g., Ratio method vs Algebraic formula).
+11. "simpleExplanation": Intuitive, beginner-friendly ELI5 explanation with real-world analogies.
+12. "similarQuestion": One similar practice question with 4 options, exact correctAnswer, and short explanation.`;
+
+  try {
+    const response = await callGeminiWithFallback(async (model, ai) => {
+      let contentPayload: any;
+
+      if (hasImage) {
+        let cleanBase64 = params.imageData!;
+        if (cleanBase64.includes('base64,')) {
+          cleanBase64 = cleanBase64.split('base64,')[1];
+        }
+        const mime = params.imageMimeType || 'image/jpeg';
+        contentPayload = {
+          parts: [
+            {
+              inlineData: {
+                mimeType: mime,
+                data: cleanBase64
+              }
+            },
+            {
+              text: promptText
+            }
+          ]
+        };
+      } else {
+        contentPayload = promptText;
+      }
+
+      try {
+        return await ai.models.generateContent({
+          model,
+          contents: contentPayload,
+          config: {
+            systemInstruction: 'You are a master SSC CGL teacher. Always output structured, mathematically accurate solutions for student doubts in clear English.',
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                answer: { type: Type.STRING },
+                stepByStep: { type: Type.ARRAY, items: { type: Type.STRING } },
+                formula: { type: Type.STRING },
+                shortcut: { type: Type.STRING },
+                examTip: { type: Type.STRING },
+                commonMistake: { type: Type.STRING },
+                difficulty: { type: Type.STRING },
+                timeTargetSeconds: { type: Type.INTEGER },
+                relatedTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
+                alternativeMethod: { type: Type.STRING },
+                simpleExplanation: { type: Type.STRING },
+                similarQuestion: {
+                  type: Type.OBJECT,
+                  properties: {
+                    question: { type: Type.STRING },
+                    options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    correctAnswer: { type: Type.STRING },
+                    explanation: { type: Type.STRING }
+                  },
+                  required: ['question', 'options', 'correctAnswer', 'explanation']
+                }
+              },
+              required: ['answer', 'stepByStep', 'formula', 'shortcut', 'examTip', 'commonMistake', 'difficulty', 'relatedTopics']
+            }
+          }
+        });
+      } catch (schemaErr: any) {
+        console.warn(`Structured schema failed on ${model}, falling back to JSON text prompt:`, schemaErr?.message);
+        return await ai.models.generateContent({
+          model,
+          contents: hasImage ? contentPayload : `${promptText}\n\nStrictly return your answer as a valid JSON object matching the requested schema.`
+        });
+      }
+    });
+
+    let rawText = '';
+    try {
+      rawText = response.text || '';
+    } catch {
+      rawText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    }
+
+    const parsed = extractAndParseJson<any>(rawText);
+    if (!parsed || !parsed.answer) {
+      if (rawText.trim()) {
+        return {
+          success: true,
+          solution: {
+            answer: rawText.trim(),
+            stepByStep: ['Analyze given values', 'Apply standard theorem', 'Compute result'],
+            formula: 'Standard property of ' + topic,
+            shortcut: 'Eliminate non-feasible options to save time.',
+            examTip: 'Check units consistency before marking your final option.',
+            commonMistake: 'Misreading question constraints or calculation oversight.',
+            difficulty: 'Medium',
+            timeTargetSeconds: 45,
+            relatedTopics: [topic, subject],
+            alternativeMethod: 'Option substitution method: test candidate values directly.',
+            simpleExplanation: 'Break the problem down step by step and compare with basic examples.'
+          }
+        };
+      }
+      return {
+        success: false,
+        error: 'Unable to resolve student doubt. Please retry.'
+      };
+    }
+
+    // Sanitize similar question options if present
+    let similarQ: any = undefined;
+    if (parsed.similarQuestion && parsed.similarQuestion.question) {
+      const opts = Array.isArray(parsed.similarQuestion.options) ? parsed.similarQuestion.options.map(String) : [];
+      similarQ = {
+        question: parsed.similarQuestion.question,
+        options: [
+          opts[0] || 'Option A',
+          opts[1] || 'Option B',
+          opts[2] || 'Option C',
+          opts[3] || 'Option D'
+        ],
+        correctAnswer: String(parsed.similarQuestion.correctAnswer || opts[0] || 'Option A'),
+        explanation: parsed.similarQuestion.explanation || 'Verified using the same principle.'
+      };
+    }
+
+    return {
+      success: true,
+      solution: {
+        answer: parsed.answer,
+        stepByStep: Array.isArray(parsed.stepByStep) && parsed.stepByStep.length > 0
+          ? parsed.stepByStep
+          : [parsed.answer],
+        formula: parsed.formula || 'Core theorem for ' + topic,
+        shortcut: parsed.shortcut || 'Verify by testing options directly.',
+        examTip: parsed.examTip || 'Eliminate extreme options immediately.',
+        commonMistake: parsed.commonMistake || 'Frequent calculation or formula confusion.',
+        difficulty: (parsed.difficulty as any) || 'Medium',
+        timeTargetSeconds: typeof parsed.timeTargetSeconds === 'number' ? parsed.timeTargetSeconds : 45,
+        relatedTopics: Array.isArray(parsed.relatedTopics) && parsed.relatedTopics.length > 0
+          ? parsed.relatedTopics
+          : [topic, subject],
+        alternativeMethod: parsed.alternativeMethod || 'Option substitution / ratio approach',
+        simpleExplanation: parsed.simpleExplanation || 'Intuitive view of ' + topic,
+        similarQuestion: similarQ
+      }
+    };
+  } catch (error: any) {
+    console.error('solveStudentDoubt Error:', error);
+    const status = error.status || (error.error && error.error.code);
+    return {
+      success: false,
+      error: status === 401
+        ? 'GEMINI_API_KEY is not configured or invalid on the server.'
+        : 'AI student doubt support service temporarily unavailable. Please retry shortly.'
+    };
+  }
+}
+
+export interface DoubtFollowupRequest {
+  originalQuestion: string;
+  originalAnswer: string;
+  followupAction: 'explain_simpler' | 'alternative_method' | 'similar_question';
+  subject?: string;
+  topic?: string;
+}
+
+export interface DoubtFollowupResponse {
+  success: boolean;
+  action: 'explain_simpler' | 'alternative_method' | 'similar_question';
+  content?: string;
+  similarQuestion?: {
+    question: string;
+    options: [string, string, string, string];
+    correctAnswer: string;
+    explanation: string;
+  };
+  error?: string;
+}
+
+export async function generateDoubtFollowup(params: DoubtFollowupRequest): Promise<DoubtFollowupResponse> {
+  const { originalQuestion, originalAnswer, followupAction, subject, topic } = params;
+
+  let actionInstruction = '';
+  if (followupAction === 'explain_simpler') {
+    actionInstruction = `Explain this concept/problem in the simplest possible terms (ELI5 style) for a student who is completely stuck.
+Use concrete everyday analogies, avoid dense technical jargon, and build intuition from the ground up so they understand the "WHY" behind the rule.`;
+  } else if (followupAction === 'alternative_method') {
+    actionInstruction = `Provide a completely different, fast alternative solving method for this problem (e.g. Ratio Method, Alligation, Option Elimination, or Unit Digit substitution) that toppers use during the actual CBT exam.
+Show the step-by-step comparison between the standard method and this speed trick.`;
+  } else {
+    actionInstruction = `Generate exactly ONE new, high-yield practice MCQ on the exact same concept/trap to verify whether the student's doubt is cleared.
+Provide 4 plausible options, specify the exact correctAnswer, and give a step-by-step explanation.`;
+  }
+
+  const prompt = `Context:
+Subject: ${subject || 'Quantitative Aptitude'}
+Topic: ${topic || 'General'}
+Original Student Doubt:
+${originalQuestion}
+
+Original Solution:
+${originalAnswer}
+
+Task:
+${actionInstruction}
+
+Return your response strictly in JSON:
+${followupAction === 'similar_question' ? `{
+  "action": "similar_question",
+  "similarQuestion": {
+    "question": "question text",
+    "options": ["opt1", "opt2", "opt3", "opt4"],
+    "correctAnswer": "exact string of correct option",
+    "explanation": "step by step explanation"
+  }
+}` : `{
+  "action": "${followupAction}",
+  "content": "detailed pedagogical response in clear English"
+}`}`;
+
+  try {
+    const response = await callGeminiWithFallback(async (model, ai) => {
+      return await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json'
+        }
+      });
+    });
+
+    const parsed = extractAndParseJson<any>(response.text);
+    if (!parsed) {
+      return {
+        success: true,
+        action: followupAction,
+        content: response.text?.trim() || 'Follow-up processed.'
+      };
+    }
+
+    if (followupAction === 'similar_question' && parsed.similarQuestion) {
+      const sq = parsed.similarQuestion;
+      const rawOpts = Array.isArray(sq.options) ? sq.options.map(String) : [];
+      return {
+        success: true,
+        action: 'similar_question',
+        similarQuestion: {
+          question: sq.question || 'Similar practice problem for ' + topic,
+          options: [
+            rawOpts[0] || 'Option A',
+            rawOpts[1] || 'Option B',
+            rawOpts[2] || 'Option C',
+            rawOpts[3] || 'Option D'
+          ],
+          correctAnswer: String(sq.correctAnswer || rawOpts[0] || 'Option A'),
+          explanation: sq.explanation || 'Verified using the same principle.'
+        }
+      };
+    }
+
+    return {
+      success: true,
+      action: followupAction,
+      content: parsed.content || response.text?.trim()
+    };
+  } catch (error: any) {
+    console.error('generateDoubtFollowup Error:', error);
+    return {
+      success: false,
+      action: followupAction,
+      error: 'Failed to generate follow-up. Please try again.'
+    };
+  }
+}
+
 
 // -------------------------------------------------------------
 // 3. AI Question Generator

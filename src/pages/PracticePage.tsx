@@ -151,6 +151,36 @@ export const PracticePage: React.FC = () => {
 
   const isBookmarked = user?.bookmarkedQuestionIds.includes(currentQ?.id);
 
+  const handleAskDoubtOnCurrentQ = () => {
+    if (!currentQ) {
+      setActivePage('ai-tutor');
+      return;
+    }
+    const subjectName = (
+      currentQ.subjectId === 'quantitative-aptitude' ? 'Quantitative Aptitude' :
+      currentQ.subjectId === 'reasoning' ? 'Reasoning' :
+      currentQ.subjectId === 'english' ? 'English' : 'General Awareness'
+    );
+    const chosen = selectedAnswers[currentIndex];
+    const isAnswered = chosen !== undefined && chosen !== null;
+    let studentAttemptNote = '';
+    if (isAnswered && chosen !== currentQ.correctAnswer) {
+      studentAttemptNote = `\n\nStudent's Mistake Note: I chose Option ${['A','B','C','D'][chosen]} ("${currentQ.options[chosen]}"), which is incorrect. Please explain why my deduction was flawed and how to eliminate this trap.`;
+    }
+
+    const doubtPayload = {
+      question: `Please solve and explain this SSC CGL ${subjectName} question step by step:\n\n"${currentQ.question}"\n\nOptions:\n${currentQ.options.map((opt, i) => `${['A','B','C','D'][i]}. ${opt}`).join('\n')}\n\nCorrect Answer: Option ${['A','B','C','D'][currentQ.correctAnswer]} (${currentQ.options[currentQ.correctAnswer]}).${studentAttemptNote}\nWhat is the fastest shortcut method to solve this in under 45 seconds?`,
+      subject: subjectName,
+      topic: currentQ.topic
+    };
+    try {
+      sessionStorage.setItem('pending_doubt_question', JSON.stringify(doubtPayload));
+    } catch {
+      // ignore session error
+    }
+    setActivePage('ai-tutor');
+  };
+
   return (
     <div className="space-y-6 py-2 select-none">
       
@@ -169,8 +199,9 @@ export const PracticePage: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setActivePage('ai-tutor')}
-          className="px-4 py-2 rounded-md bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE] hover:bg-blue-100 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+          onClick={handleAskDoubtOnCurrentQ}
+          className="px-4 py-2 rounded-md bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE] hover:bg-blue-100 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shadow-2xs"
+          title="Open AI Doubt Solver with current question"
         >
           <Bot className="w-3.5 h-3.5" />
           <span>Ask AI Doubt Solver</span>
@@ -409,6 +440,17 @@ export const PracticePage: React.FC = () => {
                     💡 <span className="font-bold">Shortcut Trick:</span> {currentQ.shortcutTrick}
                   </div>
                 )}
+
+                <div className="mt-3 pt-3 border-t border-[#E2E8F0] flex items-center justify-between">
+                  <span className="text-[11px] text-[#64748B]">Still have questions on this concept?</span>
+                  <button
+                    onClick={handleAskDoubtOnCurrentQ}
+                    className="px-3 py-1.5 rounded-md bg-[#EFF6FF] hover:bg-blue-100 text-[#2563EB] border border-[#BFDBFE] text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                  >
+                    <Bot className="w-3.5 h-3.5" />
+                    <span>Ask Doubt Support</span>
+                  </button>
+                </div>
               </div>
             )}
 

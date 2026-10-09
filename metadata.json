@@ -1,6 +1,6 @@
 {
-  "name": "SSC CGL Preparation Portal",
-  "description": "Comprehensive all-in-one preparation portal for SSC CGL aspirants featuring mock tests, practice questions, AI tutor, performance analytics, and study materials.",
+  "name": "AI-Based Resume Analyzer and Job Recommendation System",
+  "description": "Intelligent AI-powered resume analyzer, ATS scoring engine, and job recommendation platform with secure authentication, session management, and candidate profile tracking.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -1,8 +1,12 @@
 import { LoginCredentials, RegisterPayload, AuthResponse } from '../types/auth';
 import { UserProfile } from '../types';
+import { auth, googleProvider } from '../lib/firebase';
+import { signInWithPopup } from 'firebase/auth';
 
 const TOKEN_KEY = 'ssc_auth_token';
 const REMEMBER_KEY = 'ssc_remember_me';
+const ADMIN_TOKEN_KEY = 'ssc_admin_token';
+const ADMIN_SECRET_KEY = 'ssc_admin_secret';
 
 export const authService = {
   getToken(): string | null {
@@ -28,6 +32,23 @@ export const authService = {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REMEMBER_KEY);
     sessionStorage.removeItem(TOKEN_KEY);
+  },
+
+  getAdminToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem(ADMIN_TOKEN_KEY);
+  },
+
+  setAdminToken(token: string, secretToken = 'NKzoro'): void {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+    sessionStorage.setItem(ADMIN_SECRET_KEY, secretToken);
+  },
+
+  clearAdminToken(): void {
+    if (typeof window === 'undefined') return;
+    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+    sessionStorage.removeItem(ADMIN_SECRET_KEY);
   },
 
   getAuthHeaders(): Record<string, string> {
@@ -67,6 +88,36 @@ export const authService = {
     }
   },
 
+  async loginWithFirebaseGoogle(): Promise<AuthResponse> {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const res = await fetch('/api/auth/firebase-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || user.email?.split('@')[0]
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Firebase account synchronization failed.' };
+      }
+      if (data.token) {
+        this.setToken(data.token, true);
+      }
+      return data;
+    } catch (err: any) {
+      console.error('Firebase Auth Error:', err);
+      return {
+        success: false,
+        error: err.message || 'Firebase Google authentication was canceled or encountered an error.'
+      };
+    }
+  },
+
   async register(payload: RegisterPayload): Promise<AuthResponse> {
     try {
       const res = await fetch('/api/auth/register', {
@@ -89,6 +140,32 @@ export const authService = {
       return {
         success: false,
         error: 'Registration request failed. Please check your network and try again.'
+      };
+    }
+  },
+
+  async adminLogin(secretToken: string, username: string, password: string, rememberMe = true): Promise<any> {
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secretToken, username, password, rememberMe })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return {
+          success: false,
+          error: data.error || 'Admin verification failed.'
+        };
+      }
+      if (data.token) {
+        this.setAdminToken(data.token, secretToken);
+      }
+      return data;
+    } catch (err: any) {
+      return {
+        success: false,
+        error: 'Admin connection error.'
       };
     }
   },
@@ -123,6 +200,7 @@ export const authService = {
       // Ignore network errors on logout
     } finally {
       this.clearToken();
+      this.clearAdminToken();
     }
   },
 
@@ -145,7 +223,8 @@ export const authService = {
     } catch (err) {
       return {
         success: false,
-        message: 'Network error requesting password reset. Please try again later.'
+        message: 'Network error. Please try again.',
+        error: 'Network connection failed.'
       };
     }
   }

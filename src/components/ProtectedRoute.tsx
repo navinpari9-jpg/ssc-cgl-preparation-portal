@@ -25,7 +25,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       showToast({
         type: 'warning',
         title: 'Authentication Required',
-        message: 'Please sign in to access your SSC CGL preparation workspace.'
+        message: 'Please log in to access this page.'
       });
       setActivePage('login');
     }
@@ -34,8 +34,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (isLoading) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-3">
-        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-        <p className="text-xs text-slate-500 font-medium">Verifying preparation session...</p>
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        <p className="text-xs text-slate-500 font-medium">Verifying user session...</p>
       </div>
     );
   }
@@ -43,19 +43,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (!isAuthenticated) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center p-4">
-        <div className="max-w-md w-full p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl text-center space-y-4">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+        <div className="max-w-md w-full p-8 rounded-3xl bg-white border border-slate-200 shadow-xl text-center space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
             <Lock className="w-7 h-7" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            Student Authentication Required
+          <h2 className="text-xl font-bold text-slate-900">
+            Authentication Required
           </h2>
-          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-            This module is reserved for registered aspirants. Sign in or register to track your streak, access real-time mock tests, and review performance analytics.
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Please log in with your account credentials or register a new profile to access this protected module.
           </p>
           <button
             onClick={() => setActivePage('login')}
-            className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>Go to Login</span>
             <ArrowRight className="w-4 h-4" />
