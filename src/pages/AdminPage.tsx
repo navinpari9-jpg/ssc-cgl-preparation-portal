@@ -1189,7 +1189,7 @@ export const AdminPage: React.FC = () => {
                           </div>
                           <div className="font-bold text-slate-800 text-xs">No Student Accounts Found</div>
                           <p className="text-[11px] text-slate-500">
-                            The student database is clean. Click &quot;Create Student&quot; above to enroll aspirants or students can sign in directly with Google.
+                            The student database is clean. Click &quot;Create Student&quot; above to enroll aspirants or students can register with their email.
                           </p>
                         </div>
                       </td>
@@ -2174,7 +2174,7 @@ export const AdminPage: React.FC = () => {
                   <li>Purges all mock test attempts, student doubt records, and student accounts.</li>
                   <li>Resets the student directory to exactly 0 students.</li>
                   <li>Your Master Admin account and password remain completely secure.</li>
-                  <li>You can immediately start enrolling real students or have students sign in with Google.</li>
+                  <li>You can immediately start enrolling real students or students can register with their email.</li>
                 </ul>
               </div>
             </div>
