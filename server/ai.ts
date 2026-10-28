@@ -85,7 +85,6 @@ async function callGeminiWithFallback(
         lastError = err;
         const status = err.status || (err.error && err.error.code);
         const errMsg = String(err.message || '');
-        console.warn(`Gemini model ${model} (attempt ${attempt + 1}) failed: status=${status}, msg=${errMsg}`);
 
         // If auth error (invalid key or forbidden), throw immediately
         if (status === 401 || status === 403 || errMsg.includes('API_KEY_INVALID') || errMsg.includes('401')) {
@@ -111,7 +110,10 @@ async function callGeminiWithFallback(
 // -------------------------------------------------------------
 // OpenAI Client & Fallback Integration
 // -------------------------------------------------------------
+let openAiQuotaExhausted = false;
+
 export const getOpenAIKey = (): string | null => {
+  if (openAiQuotaExhausted) return null;
   const key = process.env.OPENAI_API_KEY;
   if (!key || !key.trim()) return null;
   return key.trim();
@@ -174,9 +176,17 @@ export async function callOpenAI(options: OpenAICallOptions): Promise<string> {
 
   const data: any = await response.json();
   if (!response.ok) {
-    const errorMsg = data?.error?.message || `OpenAI error ${response.status}`;
+    const errorMsg = data?.error?.message || `OpenAI status ${response.status}`;
     const code = data?.error?.code || response.status;
-    const err: any = new Error(`OpenAI Error (${code}): ${errorMsg}`);
+    if (
+      code === 'credit_balance_exhausted' ||
+      code === 'insufficient_quota' ||
+      response.status === 429 ||
+      response.status === 401
+    ) {
+      openAiQuotaExhausted = true;
+    }
+    const err: any = new Error(`OpenAI (${code}): ${errorMsg}`);
     err.status = response.status;
     err.code = code;
     throw err;
@@ -216,7 +226,6 @@ export async function testAIConnection(): Promise<{ success: boolean; message: s
         provider: 'OpenAI (gpt-4o-mini)'
       };
     } catch (err: any) {
-      console.warn('OpenAI test connection notice:', err.message);
       // Fall back to testing Gemini if available
       if (geminiKey) {
         try {
@@ -349,8 +358,8 @@ Provide the step-by-step solution and analysis strictly as a valid JSON object m
           relatedTopics: Array.isArray(parsed.relatedTopics) && parsed.relatedTopics.length > 0 ? parsed.relatedTopics : [topic, subject]
         };
       }
-    } catch (err: any) {
-      console.warn('OpenAI askAITutor notice:', err.message, '- proceeding to Gemini');
+    } catch {
+      // Proceed silently to Gemini fallback
     }
   }
 
@@ -401,8 +410,7 @@ Provide the step-by-step solution and analysis following the required JSON schem
             }
           }
         });
-      } catch (schemaErr: any) {
-        console.warn(`Structured schema failed on ${model}, falling back to unconstrained JSON prompt:`, schemaErr.message);
+      } catch {
         return await ai.models.generateContent({
           model,
           contents: `Subject: ${subject}
@@ -598,8 +606,8 @@ Return your answer strictly as a valid JSON object matching the requested schema
           }
         };
       }
-    } catch (err: any) {
-      console.warn('OpenAI solveStudentDoubt notice:', err.message, '- proceeding to Gemini');
+    } catch {
+      // Proceed silently to Gemini fallback
     }
   }
 
@@ -666,8 +674,7 @@ Return your answer strictly as a valid JSON object matching the requested schema
             }
           }
         });
-      } catch (schemaErr: any) {
-        console.warn(`Structured schema failed on ${model}, falling back to JSON text prompt:`, schemaErr?.message);
+      } catch {
         return await ai.models.generateContent({
           model,
           contents: hasImage ? contentPayload : `${promptText}\n\nStrictly return your answer as a valid JSON object matching the requested schema.`
@@ -854,8 +861,8 @@ ${followupAction === 'similar_question' ? `{
           content: parsed.content || openAiText.trim()
         };
       }
-    } catch (err: any) {
-      console.warn('OpenAI generateDoubtFollowup notice:', err.message, '- proceeding to Gemini');
+    } catch {
+      // Proceed silently to Gemini fallback
     }
   }
 
@@ -1000,8 +1007,8 @@ Return strictly a valid JSON array or object with a "questions" array containing
         });
         return { success: true, questions: validated };
       }
-    } catch (err: any) {
-      console.warn('OpenAI generateAIQuestions notice:', err.message, '- proceeding to Gemini');
+    } catch {
+      // Proceed silently to Gemini fallback
     }
   }
 
@@ -1205,8 +1212,8 @@ Return strictly a valid JSON object matching the required schema with keys: stro
           executiveSummary: parsed.executiveSummary || `Hello ${candidateName}, your accuracy is ${accuracy}%. Focus on your lowest scoring topics to cross 160+ in Tier-1.`
         };
       }
-    } catch (err: any) {
-      console.warn('OpenAI analyzeStudentPerformance notice:', err.message, '- proceeding to Gemini');
+    } catch {
+      // Proceed silently to Gemini fallback
     }
   }
 
@@ -1374,8 +1381,8 @@ Return strictly a valid JSON object matching the required schema with keys: days
           recommendationNote: parsed.recommendationNote || 'Maintain daily consistency and review mistakes before sleeping.'
         };
       }
-    } catch (err: any) {
-      console.warn('OpenAI generateAIStudyPlan notice:', err.message, '- proceeding to Gemini');
+    } catch {
+      // Proceed silently to Gemini fallback
     }
   }
 
