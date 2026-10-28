@@ -109,16 +109,143 @@ async function callGeminiWithFallback(
 }
 
 // -------------------------------------------------------------
-// 1. Connection Test
+// OpenAI Client & Fallback Integration
 // -------------------------------------------------------------
-export async function testAIConnection(): Promise<{ success: boolean; message: string; error?: string }> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || !apiKey.trim()) {
+export const getOpenAIKey = (): string | null => {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || !key.trim()) return null;
+  return key.trim();
+};
+
+export interface OpenAICallOptions {
+  systemPrompt?: string;
+  userPrompt: string;
+  jsonMode?: boolean;
+  imageData?: string;
+  imageMimeType?: string;
+}
+
+export async function callOpenAI(options: OpenAICallOptions): Promise<string> {
+  const apiKey = getOpenAIKey();
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured');
+  }
+
+  const messages: any[] = [];
+  if (options.systemPrompt) {
+    messages.push({ role: 'system', content: options.systemPrompt });
+  }
+
+  if (options.imageData) {
+    let cleanBase64 = options.imageData;
+    if (cleanBase64.includes('base64,')) {
+      cleanBase64 = cleanBase64.split('base64,')[1];
+    }
+    const mime = options.imageMimeType || 'image/jpeg';
+    messages.push({
+      role: 'user',
+      content: [
+        { type: 'text', text: options.userPrompt },
+        { type: 'image_url', image_url: { url: `data:${mime};base64,${cleanBase64}` } }
+      ]
+    });
+  } else {
+    messages.push({ role: 'user', content: options.userPrompt });
+  }
+
+  const payload: any = {
+    model: 'gpt-4o-mini',
+    messages,
+    temperature: 0.7
+  };
+
+  if (options.jsonMode) {
+    payload.response_format = { type: 'json_object' };
+  }
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data: any = await response.json();
+  if (!response.ok) {
+    const errorMsg = data?.error?.message || `OpenAI error ${response.status}`;
+    const code = data?.error?.code || response.status;
+    const err: any = new Error(`OpenAI Error (${code}): ${errorMsg}`);
+    err.status = response.status;
+    err.code = code;
+    throw err;
+  }
+
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('OpenAI returned empty response');
+  }
+
+  return content;
+}
+
+// -------------------------------------------------------------
+// 1. Connection Test (OpenAI + Gemini)
+// -------------------------------------------------------------
+export async function testAIConnection(): Promise<{ success: boolean; message: string; error?: string; provider?: string }> {
+  const openAIKey = getOpenAIKey();
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+
+  if (!openAIKey && !geminiKey) {
     return {
       success: false,
-      message: 'Gemini AI connection failed',
-      error: 'GEMINI_API_KEY is missing from environment variables'
+      message: 'AI connection failed',
+      error: 'Neither OPENAI_API_KEY nor GEMINI_API_KEY is configured on the server.'
     };
+  }
+
+  if (openAIKey) {
+    try {
+      const reply = await callOpenAI({
+        userPrompt: 'Confirm connection in one word: READY.'
+      });
+      return {
+        success: true,
+        message: `OpenAI API connection successful (${reply.trim() || 'OK'})`,
+        provider: 'OpenAI (gpt-4o-mini)'
+      };
+    } catch (err: any) {
+      console.warn('OpenAI test connection notice:', err.message);
+      // Fall back to testing Gemini if available
+      if (geminiKey) {
+        try {
+          const response = await callGeminiWithFallback(async (model, ai) => {
+            return await ai.models.generateContent({
+              model,
+              contents: 'Confirm connection in one word: READY.'
+            });
+          });
+          const reply = response.text ? response.text.trim() : '';
+          return {
+            success: true,
+            message: `OpenAI key configured (Notice: ${err.message || 'quota exhausted'} - operating seamlessly on Gemini 3.8 Flash fallback)`,
+            provider: 'Gemini (OpenAI quota fallback)'
+          };
+        } catch (geminiErr: any) {
+          return {
+            success: false,
+            message: 'Both OpenAI and Gemini connections failed',
+            error: `OpenAI: ${err.message}. Gemini: ${geminiErr.message}`
+          };
+        }
+      }
+      return {
+        success: false,
+        message: 'OpenAI connection failed',
+        error: err.message
+      };
+    }
   }
 
   try {
@@ -132,7 +259,8 @@ export async function testAIConnection(): Promise<{ success: boolean; message: s
     const reply = response.text ? response.text.trim() : '';
     return {
       success: true,
-      message: `Gemini AI connection successful (${reply || 'OK'})`
+      message: `Gemini AI connection successful (${reply || 'OK'})`,
+      provider: 'Gemini'
     };
   } catch (error: any) {
     return {
@@ -187,6 +315,44 @@ Requirements for answering every doubt:
 4. Provide a high-yield exam tip highlighting common pitfalls, traps, or units mistakes.
 5. Provide 2 to 4 related SSC CGL syllabus topics.
 6. Rate difficulty as Easy, Medium, or Hard.`;
+
+  // 1. Try OpenAI if key is configured
+  if (getOpenAIKey()) {
+    try {
+      const openAiText = await callOpenAI({
+        systemPrompt: systemInstruction,
+        userPrompt: `Subject: ${subject}
+Topic: ${topic}
+Student Doubt Question:
+${query}
+
+Provide the step-by-step solution and analysis strictly as a valid JSON object matching this structure:
+{
+  "answer": "step by step explanation and final answer",
+  "formula": "formula or rule used",
+  "shortcut": "speed trick or shortcut method",
+  "examTip": "exam tip or common mistake",
+  "difficulty": "Easy" | "Medium" | "Hard",
+  "relatedTopics": ["topic 1", "topic 2"]
+}`,
+        jsonMode: true
+      });
+      const parsed = extractAndParseJson<TutorResponseData>(openAiText);
+      if (parsed && parsed.answer) {
+        return {
+          success: true,
+          answer: parsed.answer,
+          formula: parsed.formula || 'Standard formula for ' + topic,
+          shortcut: parsed.shortcut || 'Verify by testing options directly.',
+          examTip: parsed.examTip || 'Eliminate extreme options immediately.',
+          difficulty: (parsed.difficulty as any) || 'Medium',
+          relatedTopics: Array.isArray(parsed.relatedTopics) && parsed.relatedTopics.length > 0 ? parsed.relatedTopics : [topic, subject]
+        };
+      }
+    } catch (err: any) {
+      console.warn('OpenAI askAITutor notice:', err.message, '- proceeding to Gemini');
+    }
+  }
 
   try {
     const response = await callGeminiWithFallback(async (model, ai) => {
@@ -384,6 +550,58 @@ Requirements:
 10. "alternativeMethod": An alternative solving approach (e.g., Ratio method vs Algebraic formula).
 11. "simpleExplanation": Intuitive, beginner-friendly ELI5 explanation with real-world analogies.
 12. "similarQuestion": One similar practice question with 4 options, exact correctAnswer, and short explanation.`;
+
+  // 1. Try OpenAI if key is configured
+  if (getOpenAIKey()) {
+    try {
+      const openAiText = await callOpenAI({
+        systemPrompt: 'You are a master SSC CGL teacher. Always output structured, mathematically accurate solutions for student doubts strictly in valid JSON format.',
+        userPrompt: `${promptText}
+
+Return your answer strictly as a valid JSON object matching the requested schema.`,
+        jsonMode: true,
+        imageData: params.imageData,
+        imageMimeType: params.imageMimeType
+      });
+      const parsed = extractAndParseJson<any>(openAiText);
+      if (parsed && parsed.answer) {
+        let similarQ: any = undefined;
+        if (parsed.similarQuestion && parsed.similarQuestion.question) {
+          const opts = Array.isArray(parsed.similarQuestion.options) ? parsed.similarQuestion.options.map(String) : [];
+          similarQ = {
+            question: parsed.similarQuestion.question,
+            options: [
+              opts[0] || 'Option A',
+              opts[1] || 'Option B',
+              opts[2] || 'Option C',
+              opts[3] || 'Option D'
+            ],
+            correctAnswer: String(parsed.similarQuestion.correctAnswer || opts[0] || 'Option A'),
+            explanation: parsed.similarQuestion.explanation || 'Verified using the same principle.'
+          };
+        }
+        return {
+          success: true,
+          solution: {
+            answer: parsed.answer,
+            stepByStep: Array.isArray(parsed.stepByStep) && parsed.stepByStep.length > 0 ? parsed.stepByStep : [parsed.answer],
+            formula: parsed.formula || 'Core theorem for ' + topic,
+            shortcut: parsed.shortcut || 'Verify by testing options directly.',
+            examTip: parsed.examTip || 'Eliminate extreme options immediately.',
+            commonMistake: parsed.commonMistake || 'Frequent calculation or formula confusion.',
+            difficulty: (parsed.difficulty as any) || 'Medium',
+            timeTargetSeconds: typeof parsed.timeTargetSeconds === 'number' ? parsed.timeTargetSeconds : 45,
+            relatedTopics: Array.isArray(parsed.relatedTopics) && parsed.relatedTopics.length > 0 ? parsed.relatedTopics : [topic, subject],
+            alternativeMethod: parsed.alternativeMethod || 'Option substitution / ratio approach',
+            simpleExplanation: parsed.simpleExplanation || 'Intuitive view of ' + topic,
+            similarQuestion: similarQ
+          }
+        };
+      }
+    } catch (err: any) {
+      console.warn('OpenAI solveStudentDoubt notice:', err.message, '- proceeding to Gemini');
+    }
+  }
 
   try {
     const response = await callGeminiWithFallback(async (model, ai) => {
@@ -602,6 +820,45 @@ ${followupAction === 'similar_question' ? `{
   "content": "detailed pedagogical response in clear English"
 }`}`;
 
+  // 1. Try OpenAI if key is configured
+  if (getOpenAIKey()) {
+    try {
+      const openAiText = await callOpenAI({
+        userPrompt: prompt,
+        jsonMode: true
+      });
+      const parsed = extractAndParseJson<any>(openAiText);
+      if (parsed) {
+        if (followupAction === 'similar_question' && parsed.similarQuestion) {
+          const sq = parsed.similarQuestion;
+          const rawOpts = Array.isArray(sq.options) ? sq.options.map(String) : [];
+          return {
+            success: true,
+            action: 'similar_question',
+            similarQuestion: {
+              question: sq.question || 'Similar practice problem for ' + topic,
+              options: [
+                rawOpts[0] || 'Option A',
+                rawOpts[1] || 'Option B',
+                rawOpts[2] || 'Option C',
+                rawOpts[3] || 'Option D'
+              ],
+              correctAnswer: String(sq.correctAnswer || rawOpts[0] || 'Option A'),
+              explanation: sq.explanation || 'Verified using the same principle.'
+            }
+          };
+        }
+        return {
+          success: true,
+          action: followupAction,
+          content: parsed.content || openAiText.trim()
+        };
+      }
+    } catch (err: any) {
+      console.warn('OpenAI generateDoubtFollowup notice:', err.message, '- proceeding to Gemini');
+    }
+  }
+
   try {
     const response = await callGeminiWithFallback(async (model, ai) => {
       return await ai.models.generateContent({
@@ -697,6 +954,56 @@ Strict Requirements:
 7. Provide an exam shortcut method.
 8. Set the difficulty to "${difficulty}".
 9. Set the topic to "${topic}".`;
+
+  // 1. Try OpenAI if key is configured
+  if (getOpenAIKey()) {
+    try {
+      const openAiText = await callOpenAI({
+        userPrompt: `${prompt}
+
+Return strictly a valid JSON array or object with a "questions" array containing exactly ${numQuestions} question objects matching the required schema.`,
+        jsonMode: true
+      });
+      let parsed = extractAndParseJson<any>(openAiText);
+      let items: any[] = [];
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (parsed && Array.isArray(parsed.questions)) {
+        items = parsed.questions;
+      }
+      if (items.length > 0) {
+        const validated: GeneratedQuestionItem[] = items.map((item, idx) => {
+          const rawOpts = Array.isArray(item.options) ? item.options.map(String) : [];
+          let fourOpts: [string, string, string, string] = [
+            rawOpts[0] || 'Option A',
+            rawOpts[1] || 'Option B',
+            rawOpts[2] || 'Option C',
+            rawOpts[3] || 'Option D'
+          ];
+          let correctStr = String(item.correctAnswer || fourOpts[0]);
+          let correctIndex = fourOpts.findIndex(opt => opt.trim().toLowerCase() === correctStr.trim().toLowerCase());
+          if (correctIndex === -1) {
+            fourOpts[0] = correctStr;
+            correctIndex = 0;
+          }
+          return {
+            question: item.question || `SSC CGL Model Question ${idx + 1} on ${topic}`,
+            options: fourOpts,
+            correctAnswer: correctStr,
+            correctAnswerIndex: correctIndex,
+            explanation: item.explanation || 'Step-by-step solution provided by SSC CGL syllabus.',
+            formula: item.formula || 'Primary identity for ' + topic,
+            shortcut: item.shortcut || 'Verify by testing options directly.',
+            difficulty: (item.difficulty as any) || difficulty,
+            topic: item.topic || topic
+          };
+        });
+        return { success: true, questions: validated };
+      }
+    } catch (err: any) {
+      console.warn('OpenAI generateAIQuestions notice:', err.message, '- proceeding to Gemini');
+    }
+  }
 
   try {
     const response = await callGeminiWithFallback(async (model, ai) => {
@@ -870,6 +1177,39 @@ Strict Requirements:
 7. Recommend target practice difficulty (Easy, Medium, or Hard).
 8. Provide an executive summary in encouraging, actionable English.`;
 
+  // 1. Try OpenAI if key is configured
+  if (getOpenAIKey()) {
+    try {
+      const openAiText = await callOpenAI({
+        userPrompt: `${prompt}
+
+Return strictly a valid JSON object matching the required schema with keys: strongAreas, weakAreas, topicsRequiringRevision, commonMistakes, recommendedStudyOrder, personalizedDailyRevisionPlan, recommendedPracticeDifficulty, executiveSummary.`,
+        jsonMode: true
+      });
+      const parsed = extractAndParseJson<PerformanceAnalysisOutput>(openAiText);
+      if (parsed && (parsed.strongAreas || parsed.executiveSummary)) {
+        return {
+          success: true,
+          strongAreas: parsed.strongAreas || ['Reasoning Speed', 'Arithmetic'],
+          weakAreas: parsed.weakAreas || ['Indian Polity Articles', 'Time & Work'],
+          topicsRequiringRevision: parsed.topicsRequiringRevision || ['Mensuration', 'Geometry Theorems'],
+          commonMistakes: parsed.commonMistakes || ['Calculation errors under timed conditions', 'Negative marking in GK guesses'],
+          recommendedStudyOrder: parsed.recommendedStudyOrder || ['Quant Weak Areas', 'Reasoning Puzzles', 'Daily English Vocab', 'Static GK'],
+          personalizedDailyRevisionPlan: parsed.personalizedDailyRevisionPlan || [
+            '07:00 AM - 08:30 AM: Quant speed drills and formulas',
+            '09:00 AM - 10:00 AM: English grammar & 20 vocab words',
+            '02:00 PM - 03:00 PM: General Awareness static capsules',
+            '07:00 PM - 08:30 PM: 1 Sectional mock test under strict CBT timing'
+          ],
+          recommendedPracticeDifficulty: (parsed.recommendedPracticeDifficulty as any) || 'Medium',
+          executiveSummary: parsed.executiveSummary || `Hello ${candidateName}, your accuracy is ${accuracy}%. Focus on your lowest scoring topics to cross 160+ in Tier-1.`
+        };
+      }
+    } catch (err: any) {
+      console.warn('OpenAI analyzeStudentPerformance notice:', err.message, '- proceeding to Gemini');
+    }
+  }
+
   try {
     const response = await callGeminiWithFallback(async (model, ai) => {
       return await ai.models.generateContent({
@@ -1016,6 +1356,28 @@ Strict Requirements:
 3. Distribute time to strengthen weak subjects while maintaining practice in strong subjects.
 4. Task types must be one of: "Study", "Practice Drill", "Mock Test", "Revision", "Vocab / GK".
 5. Provide clear topic names and duration in minutes.`;
+
+  // 1. Try OpenAI if key is configured
+  if (getOpenAIKey()) {
+    try {
+      const openAiText = await callOpenAI({
+        userPrompt: `${prompt}
+
+Return strictly a valid JSON object matching the required schema with keys: days (array of 7 day objects with day, tasks: [{ subject, topic, duration, type, notes }]), recommendationNote.`,
+        jsonMode: true
+      });
+      const parsed = extractAndParseJson<AIStudyPlanOutput>(openAiText);
+      if (parsed && Array.isArray(parsed.days) && parsed.days.length > 0) {
+        return {
+          success: true,
+          days: parsed.days,
+          recommendationNote: parsed.recommendationNote || 'Maintain daily consistency and review mistakes before sleeping.'
+        };
+      }
+    } catch (err: any) {
+      console.warn('OpenAI generateAIStudyPlan notice:', err.message, '- proceeding to Gemini');
+    }
+  }
 
   try {
     const response = await callGeminiWithFallback(async (model, ai) => {

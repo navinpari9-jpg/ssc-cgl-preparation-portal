@@ -27,10 +27,15 @@ app.use(cookieParser());
 
 // Health & System Status
 app.get('/api/health', (req: Request, res: Response) => {
+  const hasOpenAI = !!(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim());
+  const hasGemini = !!(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
   res.json({
     success: true,
     server: 'running',
-    aiConfigured: !!(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim())
+    aiConfigured: hasOpenAI || hasGemini,
+    primaryProvider: hasOpenAI ? 'OpenAI (GPT-4o-mini)' : 'Gemini 3.8 Flash',
+    hasOpenAIKey: hasOpenAI,
+    hasGeminiKey: hasGemini
   });
 });
 
